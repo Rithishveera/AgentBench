@@ -1,0 +1,51 @@
+[project]
+name = "agentbench-workspace"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["apps/api", "packages/agent-sdk", "packages/task-spec"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0,<2",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.8.0",
+    "types-PyYAML>=6.0.12,<7",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = [
+    "apps/api/src",
+    "packages/agent-sdk/src",
+    "packages/task-spec/src",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "--import-mode=importlib"
+testpaths = ["apps/api/tests", "packages/agent-sdk/tests", "packages/task-spec/tests"]
+pythonpath = [
+    "apps/api/src",
+    "packages/agent-sdk/src",
+    "packages/task-spec/src",
+]
+markers = ["docker: requires an available Docker daemon"]
