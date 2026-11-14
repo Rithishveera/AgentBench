@@ -26,8 +26,9 @@ class SandboxResult:
     stdout: bytes
     stderr: bytes
     timed_out: bool
-    oom: bool
-    collected_files: dict[str, bytes]
+    oom_killed: bool
+    duration_ms: int
+    collected: dict[str, bytes]
 
 
 @dataclass(slots=True)

@@ -1,4 +1,4 @@
-.PHONY: up down check test fmt
+.PHONY: up down check test fmt sandbox-image
 
 up:
 	docker compose up -d --wait
@@ -18,3 +18,6 @@ test:
 fmt:
 	uv run --all-packages ruff check --fix .
 	uv run --all-packages ruff format .
+
+sandbox-image:
+	docker build --target sandbox -f infra/docker/sandbox.Dockerfile -t agentbench/sandbox:py312 .

@@ -1,4 +1,28 @@
 services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment:
+      CONTAINERS: "1"
+      IMAGES: "1"
+      POST: "1"
+      ALLOW_START: "1"
+      ALLOW_RESTARTS: "1"
+      EXEC: "0"
+      NETWORKS: "0"
+      VOLUMES: "0"
+      SWARM: "0"
+      SERVICES: "0"
+      TASKS: "0"
+      SECRETS: "0"
+      CONFIGS: "0"
+      BUILD: "0"
+      COMMIT: "0"
+      PLUGINS: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - platform_net
+
   postgres:
     image: postgres:16
     environment:
