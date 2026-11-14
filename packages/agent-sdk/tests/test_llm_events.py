@@ -118,6 +118,8 @@ async def test_llm_hooks_record_usage_without_api_key() -> None:
     assert event["payload"]["model"] == "test-model"
     assert event["payload"]["status_code"] == 200
     assert event["payload"]["usage"]["total_tokens"] == 5
+    assert event["payload"]["prompt"] == [{"role": "user", "content": "hi"}]
+    assert event["payload"]["response"] == {"role": "assistant", "content": "ok"}
     assert event["duration_ms"] >= 0
 
 

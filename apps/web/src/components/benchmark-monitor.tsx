@@ -109,7 +109,7 @@ export function BenchmarkMonitor({
                 {data.runs.items.map((run) => (
                   <tr key={run.id}>
                     <td>{agentNames.get(run.agent_id) ?? run.agent_id.slice(0, 8)}</td>
-                    <td className="mono">{run.task_id}</td>
+                    <td className="mono"><Link className="text-forest underline-offset-2 hover:underline" href={`/runs/${run.id}`}>{run.task_id}</Link></td>
                     <td>{run.attempt_no}</td>
                     <td><Badge tone={run.fault_mode === "faulted" ? "warning" : "neutral"}>{run.fault_mode}</Badge></td>
                     <td><Badge tone={statusTone(run.status)}>{run.status}</Badge></td>

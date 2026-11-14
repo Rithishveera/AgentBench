@@ -23,6 +23,7 @@ from unidiff.errors import UnidiffParseError
 
 MAX_PATCH_BYTES = 256 * 1024
 MAX_TEST_FILES = 500
+MAX_FAILED_TEST_NAMES = 50
 MAX_HIDDEN_BYTES = 14 * 1024 * 1024
 PATCH_PATH = ".agentbench-internal/solution.patch"
 JUNIT_PATH = ".agentbench-internal/junit.xml"
@@ -173,7 +174,9 @@ def _test_command(config: dict[str, Any]) -> tuple[list[str], int]:
     return command.copy(), min_tests
 
 
-def _junit_counts(content: bytes) -> tuple[int, int, int, int, int] | None:
+def _junit_counts(
+    content: bytes,
+) -> tuple[int, int, int, int, int, list[str]] | None:
     try:
         root = fromstring(content)
     except (ParseError, DefusedXmlException):
@@ -182,12 +185,22 @@ def _junit_counts(content: bytes) -> tuple[int, int, int, int, int] | None:
     failures = 0
     errors = 0
     skipped = 0
+    failed_tests: list[str] = []
     for case in cases:
-        failures += int(case.find("failure") is not None)
-        errors += int(case.find("error") is not None)
+        failure = case.find("failure")
+        error = case.find("error")
+        failures += int(failure is not None)
+        errors += int(error is not None)
         skipped += int(case.find("skipped") is not None)
+        if (failure is not None or error is not None) and len(
+            failed_tests
+        ) < MAX_FAILED_TEST_NAMES:
+            class_name = case.attrib.get("classname", "").strip()
+            test_name = case.attrib.get("name", "<unnamed>").strip()
+            label = f"{class_name}::{test_name}" if class_name else test_name
+            failed_tests.append(label[:256])
     passed = max(len(cases) - failures - errors - skipped, 0)
-    return len(cases), passed, failures, errors, skipped
+    return len(cases), passed, failures, errors, skipped, failed_tests
 
 
 def _verdict_from_result(result: SandboxResult, min_tests: int) -> Verdict:
@@ -223,7 +236,7 @@ def _verdict_from_result(result: SandboxResult, min_tests: int) -> Verdict:
             error_kind="test_failure",
             details={"reason": "sandbox produced invalid or unsafe JUnit XML"},
         )
-    total, passed_tests, failures, errors, skipped = counts
+    total, passed_tests, failures, errors, skipped, failed_tests = counts
     if total < min_tests:
         return Verdict(
             passed=False,
@@ -233,6 +246,7 @@ def _verdict_from_result(result: SandboxResult, min_tests: int) -> Verdict:
                 "reason": f"collected {total} tests; minimum is {min_tests}",
                 "tests_collected": total,
                 "passed_tests": passed_tests,
+                "failed_tests": failed_tests,
             },
         )
     failed = result.exit_code != 0 or failures > 0 or errors > 0
@@ -247,6 +261,7 @@ def _verdict_from_result(result: SandboxResult, min_tests: int) -> Verdict:
             "errors": errors,
             "skipped": skipped,
             "exit_code": result.exit_code,
+            "failed_tests": failed_tests,
         },
     )
 

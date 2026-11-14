@@ -105,3 +105,11 @@
 - `/`: sortable leaderboard with confidence intervals, pass^k, latency, cost, resilience, and low-sample warnings; `/agents`: paginated directory and one-time-secret registration; `/benchmarks/new`: fault/paired wizard with worst-case spend estimate; `/benchmarks/{id}`: three-second run polling.
 - `finalize_benchmark(...)`: stores pass^k for the selected run mode, using baseline samples for paired benchmarks.
 - `make check` gates (run directly because `make`/`uv` are unavailable): Ruff, formatting, strict Mypy, pytest (`142 passed, 16 skipped`), web typecheck/tests/build, and the built-client API-key scan all pass.
+
+## M12
+- `GET /runs/{run_id}/steps?after_seq&limit`: keyset-paginated step projection (`seq`, `type`, `ts`, `duration_ms`, `ok`, bounded `short_label`, `truncated`) without selecting or returning payload JSON.
+- `GET /runs/{run_id}/steps/{seq}`: fetches a single full event payload on demand; `GET /runs/{run_id}/faults?after_seq&limit` returns paginated injected faults and reaction labels.
+- `TestsPassValidator.validate(...)`: verdict details now include up to 50 bounded failed/error test names from JUnit output.
+- `RunContext._llm_response(...)`: LLM step events include prompt and response content under existing redaction and payload-size limits.
+- `/runs/{id}`, `RunHeader`, `RunTimelineIsland`, `RunInspector`, `RunStepCard`, `StepPayloadDetail`, `TimeRuler`, `RunVerdictPanel`, `PayloadView`, and `formatUtcTime(value) -> string`: reviewer timeline with filters, keyboard controls, lazy escaped payloads, fault markers, proportional timing, virtualization, and validator patch/test details.
+- `make check` gates (run directly because `make`/`uv` are unavailable): Ruff, formatting, strict Mypy, pytest, web typecheck/tests/build, and client API-key scan pass; the 1,000-step summary projection stays payload-free and under 40 KB.

@@ -146,6 +146,19 @@ class RunContext:
                 if key in usage
             },
         }
+        prompt = request_data.get("messages", request_data.get("prompt"))
+        if prompt is not None:
+            payload["prompt"] = prompt
+        choices = response_data.get("choices")
+        if isinstance(choices, list):
+            responses = [
+                choice.get("message", choice.get("delta", choice.get("text")))
+                for choice in choices
+                if isinstance(choice, dict)
+            ]
+            responses = [value for value in responses if value is not None]
+            if responses:
+                payload["response"] = responses[0] if len(responses) == 1 else responses
         if budget_exceeded:
             payload["budget_exceeded"] = True
         await self.step(

@@ -116,8 +116,9 @@ async def test_zero_collected_tests_never_pass(tmp_path: Path) -> None:
 
 async def test_empty_patch_runs_tests_and_fails_on_test_failure(tmp_path: Path) -> None:
     junit = (
-        b"<testsuite><testcase><failure/></testcase>"
-        b"<testcase><failure/></testcase></testsuite>"
+        b'<testsuite><testcase classname="test_patch" name="test_missing">'
+        b'<failure/></testcase><testcase classname="test_patch" '
+        b'name="test_broken"><error/></testcase></testsuite>'
     )
     sandbox = _FakeSandbox(_result(exit_code=1, junit=junit))
     verdict = await TestsPassValidator().validate(
@@ -125,6 +126,10 @@ async def test_empty_patch_runs_tests_and_fails_on_test_failure(tmp_path: Path) 
     )
     assert verdict.passed is False
     assert verdict.error_kind == "test_failure"
+    assert verdict.details["failed_tests"] == [
+        "test_patch::test_missing",
+        "test_patch::test_broken",
+    ]
     assert len(sandbox.calls) == 1
     assert sandbox.calls[0][1][PATCH_PATH] == b""
 

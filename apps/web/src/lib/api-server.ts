@@ -88,3 +88,48 @@ export type BenchmarkRun = {
   started_at: string | null;
   finished_at: string | null;
 };
+
+export type RunVerdict = {
+  passed: boolean;
+  score: number;
+  error_kind: string;
+  details: Record<string, unknown>;
+};
+export type RunRecord = {
+  id: string;
+  benchmark_id: string;
+  agent_id: string;
+  task_id: string;
+  attempt_no: number;
+  status: string;
+  artifact: Record<string, unknown> | null;
+  verdict: RunVerdict | null;
+  failure_cause: string | null;
+  steps_count: number;
+  tool_calls: number;
+  tokens_in: number;
+  tokens_out: number;
+  cost_usd: number | string;
+  duration_ms: number | null;
+  error: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+};
+export type StepSummary = {
+  seq: number;
+  type: "llm" | "tool" | "retry";
+  ts: string;
+  duration_ms: number;
+  ok: boolean;
+  short_label: string;
+  truncated: boolean;
+};
+export type StepDetail = StepSummary & { payload: Record<string, unknown> };
+export type FaultRecord = {
+  seq: number;
+  fault_type: string;
+  ts: string;
+  agent_reaction: string | null;
+  detail: Record<string, unknown>;
+};
+export type CursorPage<T> = { items: T[]; next_cursor: number | null };

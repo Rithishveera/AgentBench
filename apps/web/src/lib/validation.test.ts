@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { benchmarkRequestSchema, registerAgentSchema } from "./validation";
+import { formatUtcTime } from "./utils";
 
 describe("dashboard request validation", () => {
   it("accepts a bounded external agent registration", () => {
@@ -28,5 +29,9 @@ describe("dashboard request validation", () => {
       fault_flags: {},
       paired: true,
     }).success).toBe(false);
+  });
+
+  it("formats event times consistently in UTC", () => {
+    expect(formatUtcTime("2026-11-14T13:56:00.000Z")).toBe("1:56:00 PM");
   });
 });
