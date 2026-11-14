@@ -1,0 +1,24 @@
+id: refactor-extract-func
+category: coding
+version: 1
+title: Extract shared word normalization
+prompt: >-
+  Extract a reusable _normalize_words(text) helper using Unicode-aware
+  alphanumeric tokenization and case-folding. Use it in both count_words and
+  unique_word_count. Punctuation and symbol-only tokens do not count.
+limits:
+  timeout_s: 30
+  max_steps: 20
+  max_cost_usd: 2
+validator:
+  type: tests_pass
+  config:
+    editable_globs:
+      - src/**
+    test_cmd:
+      - pytest
+      - -q
+    min_tests: 4
+tags:
+  - coding
+  - refactor

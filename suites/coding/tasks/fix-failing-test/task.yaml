@@ -1,0 +1,24 @@
+id: fix-failing-test
+category: coding
+version: 1
+title: Clamp values to a valid range
+prompt: >-
+  Fix clamp so it returns value constrained to the inclusive lower and upper
+  bounds. Reject lower greater than upper with ValueError. Preserve the default
+  bounds of 0 and 100.
+limits:
+  timeout_s: 30
+  max_steps: 20
+  max_cost_usd: 2
+validator:
+  type: tests_pass
+  config:
+    editable_globs:
+      - src/**
+    test_cmd:
+      - pytest
+      - -q
+    min_tests: 4
+tags:
+  - coding
+  - bug-fix

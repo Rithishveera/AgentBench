@@ -53,7 +53,12 @@ def _client_from_environment() -> DockerClient:
         or parsed.port != 2375
     ):
         raise InfraError("DOCKER_HOST must point to docker-socket-proxy:2375")
-    return docker.DockerClient(base_url=host, timeout=15)
+    try:
+        return docker.DockerClient(base_url=host, timeout=15)
+    except docker.errors.DockerException as error:
+        raise InfraError(
+            f"Docker sandbox client initialization failed: {type(error).__name__}"
+        ) from None
 
 
 class DockerSandbox:

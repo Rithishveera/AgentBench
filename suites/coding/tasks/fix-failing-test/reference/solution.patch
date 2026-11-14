@@ -1,0 +1,10 @@
+diff --git a/src/scores.py b/src/scores.py
+index 1111111..2222222 100644
+--- a/src/scores.py
++++ b/src/scores.py
+@@ -1,2 +1,4 @@
+ def clamp(value: int, lower: int = 0, upper: int = 100) -> int:
+-    return value
++    if lower > upper:
++        raise ValueError("lower must not exceed upper")
++    return max(lower, min(upper, value))

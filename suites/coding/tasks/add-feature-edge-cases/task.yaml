@@ -1,0 +1,24 @@
+id: add-feature-edge-cases
+category: coding
+version: 1
+title: Handle chunking edge cases
+prompt: >-
+  Update chunked so it rejects sizes less than or equal to zero with ValueError,
+  returns an empty list for empty input, preserves order, and returns independent
+  chunks that do not alias the input list.
+limits:
+  timeout_s: 30
+  max_steps: 20
+  max_cost_usd: 2
+validator:
+  type: tests_pass
+  config:
+    editable_globs:
+      - src/**
+    test_cmd:
+      - pytest
+      - -q
+    min_tests: 4
+tags:
+  - coding
+  - edge-cases

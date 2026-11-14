@@ -23,3 +23,10 @@
 - `DockerSandbox.run(image: str, files: dict[str, bytes], cmd: list[str], limits: TaskLimits, collect_paths: list[str]) -> SandboxResult`: validates input, runs an isolated container, bounds output, and always removes it.
 - `DockerSandbox.reap_orphans(older_than_s: int) -> int`: removes stale labeled sandbox containers.
 - `SandboxResult(exit_code, stdout, stderr, timed_out, oom_killed, duration_ms, collected) -> SandboxResult`: sandbox result contract.
+
+## M3
+- `TestsPassValidator.validate(context: ValidationContext) -> Verdict`: validates coding patches and grades pytest/JUnit results in one sandbox run.
+- `VALIDATORS: dict[str, Validator]`: API validator registry.
+- `validate_validator_types(tasks: Iterable[Task]) -> None`: startup preflight that rejects unregistered task validator types.
+- `validate_run(task: Task, artifact: bytes, sandbox: SandboxRunner) -> Verdict`: builds a visible-fixture context and dispatches to the registered validator.
+- `main(argv: list[str] | None = None) -> int`: QA CLI that checks reference and empty patches for every task in a suite.

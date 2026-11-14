@@ -23,6 +23,18 @@ services:
     networks:
       - platform_net
 
+  qa-runner:
+    profiles: ["qa"]
+    build:
+      context: .
+      dockerfile: infra/docker/qa-runner.Dockerfile
+    environment:
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
+    depends_on:
+      - docker-socket-proxy
+    networks:
+      - platform_net
+
   postgres:
     image: postgres:16
     environment:

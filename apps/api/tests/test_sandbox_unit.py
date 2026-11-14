@@ -7,6 +7,7 @@ import tarfile
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import docker
 import pytest
 from agentbench_api.services.sandbox import DockerSandbox, InfraError, Limits
 from agentbench_tasks.schema import TaskLimits
@@ -226,4 +227,17 @@ def test_default_client_rejects_raw_docker_socket(
 ) -> None:
     monkeypatch.setenv("DOCKER_HOST", "unix:///var/run/docker.sock")
     with pytest.raises(InfraError, match="docker-socket-proxy"):
+        DockerSandbox()
+
+
+def test_default_client_wraps_proxy_connection_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DOCKER_HOST", "tcp://docker-socket-proxy:2375")
+
+    def unavailable_client(**kwargs: Any) -> None:
+        raise docker.errors.DockerException("proxy unavailable")
+
+    monkeypatch.setattr(docker, "DockerClient", unavailable_client)
+    with pytest.raises(InfraError, match="client initialization failed"):
         DockerSandbox()

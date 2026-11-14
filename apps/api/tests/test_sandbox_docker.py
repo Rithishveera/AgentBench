@@ -8,7 +8,10 @@ from typing import Any
 import docker
 import pytest
 from agentbench_api.services.sandbox import SANDBOX_LABEL, DockerSandbox, Limits
+from agentbench_tasks.loader import load_suite, visible_files
 from agentbench_tasks.schema import TaskLimits
+from agentbench_tasks.validators.base import ValidationContext
+from agentbench_tasks.validators.tests_pass import TestsPassValidator
 
 pytestmark = pytest.mark.docker
 
@@ -186,3 +189,29 @@ def test_workspace_temp_write_is_available(docker_client: docker.DockerClient) -
         ],
     )
     assert result.exit_code == 0
+
+
+def test_infinite_loop_solution_returns_timeout_verdict(
+    docker_client: docker.DockerClient,
+) -> None:
+    suite = load_suite(ROOT / "suites" / "coding")
+    task = next(task for task in suite.tasks if task.id == "fix-failing-test")
+    patch = (
+        b"diff --git a/src/scores.py b/src/scores.py\n"
+        b"--- a/src/scores.py\n"
+        b"+++ b/src/scores.py\n"
+        b"@@ -1,2 +1,3 @@\n"
+        b" def clamp(value: int, lower: int = 0, upper: int = 100) -> int:\n"
+        b"-    return value\n"
+        b"+    while True:\n"
+        b"+        pass\n"
+    )
+    context = ValidationContext(
+        task=task,
+        files={item["path"]: item["content"].encode() for item in visible_files(task)},
+        patch=patch,
+        sandbox=DockerSandbox(client=docker_client, limits=Limits(timeout_s=1)),
+    )
+    verdict = asyncio.run(TestsPassValidator().validate(context))
+    assert verdict.passed is False
+    assert verdict.error_kind == "timeout"

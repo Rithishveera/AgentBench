@@ -1,4 +1,4 @@
-.PHONY: up down check test fmt sandbox-image
+.PHONY: up down check test fmt sandbox-image qa-tasks
 
 up:
 	docker compose up -d --wait
@@ -21,3 +21,6 @@ fmt:
 
 sandbox-image:
 	docker build --target sandbox -f infra/docker/sandbox.Dockerfile -t agentbench/sandbox:py312 .
+
+qa-tasks:
+	docker compose --profile qa run --rm --build qa-runner
