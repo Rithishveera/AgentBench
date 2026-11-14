@@ -6,7 +6,7 @@ from typing import Annotated
 from uuid import UUID
 
 from agentbench_tasks.loader import Suite
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +39,60 @@ async def get_benchmark(
         "seed": benchmark.seed,
         "created_at": benchmark.created_at,
         "finished_at": benchmark.finished_at,
+    }
+
+
+@router.get("/{benchmark_id}/runs")
+async def list_benchmark_runs(
+    benchmark_id: UUID,
+    _: ApiKey,
+    session: Session,
+    cursor: UUID | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> dict[str, object]:
+    if await session.get(Benchmark, benchmark_id) is None:
+        raise HTTPException(status_code=404, detail="Benchmark not found")
+    statement = (
+        select(
+            Run.id,
+            Run.agent_id,
+            Run.task_id,
+            Run.attempt_no,
+            Run.fault_mode,
+            Run.status,
+            Run.verdict,
+            Run.failure_cause,
+            Run.duration_ms,
+            Run.cost_usd,
+            Run.started_at,
+            Run.finished_at,
+        )
+        .where(Run.benchmark_id == benchmark_id)
+        .order_by(Run.id)
+        .limit(limit + 1)
+    )
+    if cursor is not None:
+        statement = statement.where(Run.id > cursor)
+    rows = list((await session.execute(statement)).all())
+    has_more = len(rows) > limit
+    page = rows[:limit]
+    fields = (
+        "id",
+        "agent_id",
+        "task_id",
+        "attempt_no",
+        "fault_mode",
+        "status",
+        "verdict",
+        "failure_cause",
+        "duration_ms",
+        "cost_usd",
+        "started_at",
+        "finished_at",
+    )
+    return {
+        "items": [dict(zip(fields, row, strict=True)) for row in page],
+        "next_cursor": str(page[-1][0]) if has_more and page else None,
     }
 
 

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from agentbench_api.db import get_session_factory
 from agentbench_api.models import Benchmark, Run
-from agentbench_api.services.scorer import summarize_runs
+from agentbench_api.services.scorer import pass_at_k, summarize_runs
 
 
 async def finalize_benchmark(
@@ -34,6 +34,7 @@ async def finalize_benchmark(
                     str,
                     str,
                     str,
+                    str,
                     dict[str, Any] | None,
                     str | None,
                     int,
@@ -48,6 +49,7 @@ async def finalize_benchmark(
                         Run.agent_id,
                         Run.task_id,
                         Run.task_digest,
+                        Run.fault_mode,
                         Run.status,
                         Run.verdict,
                         Run.failure_cause,
@@ -71,11 +73,14 @@ async def finalize_benchmark(
         task_digests: dict[str, str] = {}
         agent_runs: dict[str, list[dict[str, Any]]] = {}
         agent_task_passes: dict[str, dict[str, dict[str, int]]] = {}
+        agent_mode_task_passes: dict[str, dict[str, dict[str, dict[str, int]]]] = {}
+        mode_task_passes: dict[str, dict[str, dict[str, int]]] = {}
         run_rows: list[dict[str, Any]] = []
         for (
             run_agent_id,
             task_id,
             task_digest,
+            fault_mode,
             status,
             verdict,
             failure_cause,
@@ -87,6 +92,7 @@ async def finalize_benchmark(
             passed = bool(verdict and verdict.get("passed") is True)
             status_breakdown[status] = status_breakdown.get(status, 0) + 1
             run_data = {
+                "fault_mode": fault_mode,
                 "status": status,
                 "passed": passed,
                 "failure_cause": failure_cause,
@@ -101,12 +107,25 @@ async def finalize_benchmark(
             agent_task_entry = agent_task_passes.setdefault(
                 str(run_agent_id), {}
             ).setdefault(task_id, {"attempts": 0, "passes": 0})
+            agent_mode_entry = (
+                agent_mode_task_passes.setdefault(str(run_agent_id), {})
+                .setdefault(fault_mode, {})
+                .setdefault(task_id, {"attempts": 0, "passes": 0})
+            )
+            mode_entry = mode_task_passes.setdefault(fault_mode, {}).setdefault(
+                task_id,
+                {"attempts": 0, "passes": 0},
+            )
             if status in {"completed", "agent_error", "timeout"}:
                 task_entry["attempts"] += 1
                 agent_task_entry["attempts"] += 1
+                agent_mode_entry["attempts"] += 1
+                mode_entry["attempts"] += 1
                 if status == "completed" and passed:
                     task_entry["passes"] += 1
                     agent_task_entry["passes"] += 1
+                    agent_mode_entry["passes"] += 1
+                    mode_entry["passes"] += 1
             agent_runs.setdefault(str(run_agent_id), []).append(run_data)
 
         agent_summaries: dict[str, dict[str, Any]] = {}
@@ -120,9 +139,39 @@ async def finalize_benchmark(
                 )
                 for task_id in sorted(task_passes)
             }
+            pass_mode = "none" if benchmark.paired else "faulted"
+            if pass_mode not in agent_mode_task_passes[agent_id]:
+                pass_mode = "none"
+            k = min(3, benchmark.repetitions)
+            summary["pass_at_k"] = {
+                "k": k,
+                **pass_at_k(
+                    [
+                        (values["attempts"], values["passes"])
+                        for values in agent_mode_task_passes[agent_id]
+                        .get(pass_mode, {})
+                        .values()
+                    ],
+                    k,
+                ),
+            }
             agent_summaries[agent_id] = summary
 
         overall = summarize_runs(run_rows)
+        pass_mode = "none" if benchmark.paired else "faulted"
+        if pass_mode not in mode_task_passes:
+            pass_mode = "none"
+        k = min(3, benchmark.repetitions)
+        overall["pass_at_k"] = {
+            "k": k,
+            **pass_at_k(
+                [
+                    (values["attempts"], values["passes"])
+                    for values in mode_task_passes.get(pass_mode, {}).values()
+                ],
+                k,
+            ),
+        }
         overall["task_passes"] = {
             task_id: task_values for task_id, task_values in sorted(task_passes.items())
         }
@@ -136,12 +185,12 @@ async def finalize_benchmark(
         }
         if rows and all(
             status in {"completed", "agent_error", "timeout", "infra_error"}
-            for _, _, _, status, *_ in rows
+            for _, _, _, _, status, *_ in rows
         ):
             benchmark.status = "completed"
             benchmark.finished_at = datetime.now(UTC)
         elif rows and any(
-            status in {"running", "queued"} for _, _, _, status, *_ in rows
+            status in {"running", "queued"} for _, _, _, _, status, *_ in rows
         ):
             benchmark.status = "running"
         else:

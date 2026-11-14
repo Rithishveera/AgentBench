@@ -96,3 +96,12 @@
 - `BenchmarkRequest.paired` and `Run.fault_mode`: optionally create baseline/faulted run pairs without mixing their fault plans.
 - `summarize_runs(...)`: reports resilience and recovery rate for comparable baseline/faulted runs; definitions are in `docs/metrics.md`.
 - `make check`: verified with Ruff, strict Mypy, and pytest (`139 passed, 16 skipped`).
+
+## M11
+- `apps/api/openapi.json` and `make gen-types`: generate the typed TypeScript API paths used by the dashboard client.
+- `apiClient() -> Client<paths>` and `allAgents() -> Promise<Agent[]>`: server-only API access with `X-API-Key` and uncached requests.
+- `GET /benchmarks/{benchmark_id}/runs`: keyset-paginated benchmark run status rows without artifacts.
+- `GET/POST /api/agents`, `GET /api/suites`, `GET /api/suites/{suite_id}/tasks`, `GET /api/results/leaderboard`, `POST /api/benchmarks`, and `GET /api/benchmarks/{benchmark_id}`: same-origin Next.js BFF routes.
+- `/`: sortable leaderboard with confidence intervals, pass^k, latency, cost, resilience, and low-sample warnings; `/agents`: paginated directory and one-time-secret registration; `/benchmarks/new`: fault/paired wizard with worst-case spend estimate; `/benchmarks/{id}`: three-second run polling.
+- `finalize_benchmark(...)`: stores pass^k for the selected run mode, using baseline samples for paired benchmarks.
+- `make check` gates (run directly because `make`/`uv` are unavailable): Ruff, formatting, strict Mypy, pytest (`142 passed, 16 skipped`), web typecheck/tests/build, and the built-client API-key scan all pass.

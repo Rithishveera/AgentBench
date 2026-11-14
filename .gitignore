@@ -11,3 +11,7 @@ node_modules/
 dist/
 build/
 *.egg-info/
+.next/
+out/
+apps/web/next-env.d.ts
+*.tsbuildinfo

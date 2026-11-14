@@ -1,0 +1,11 @@
+{
+  "name": "agentbench",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "dev": "pnpm --filter @agentbench/web dev",
+    "build": "pnpm --filter @agentbench/web build",
+    "check:web": "pnpm --filter @agentbench/web typecheck && pnpm --filter @agentbench/web test",
+    "check:web-security": "pnpm --filter @agentbench/web test:security"
+  }
+}

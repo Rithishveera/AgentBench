@@ -56,6 +56,10 @@ $$
 
 Tasks with $n < k$ are excluded from the average. We also report the number excluded.
 
+For paired benchmarks, pass^k uses baseline (unfaulted) attempts so faulted
+variants do not double-count the sampling budget. Finalized summaries store the
+largest supported $k$ up to 3, based on the configured repetitions.
+
 - `pass^1` is equivalent to the mean per-task success rate.
 - For a fixed task, the estimator is non-increasing in $k$. Aggregate values can rise when the eligible task set changes as tasks with fewer than $k$ attempts are excluded; compare values only with their eligible-task counts.
 
