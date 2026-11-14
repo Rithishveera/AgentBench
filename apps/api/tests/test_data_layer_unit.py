@@ -64,7 +64,24 @@ def test_get_session_yields_and_closes_session(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(deps, "get_session_factory", lambda: lambda: context)
 
     async def consume() -> object:
-        generator = deps.get_session()
+        request = type(
+            "Req",
+            (),
+            {
+                "app": type(
+                    "App",
+                    (),
+                    {
+                        "state": type(
+                            "State",
+                            (),
+                            {"session_factory": staticmethod(lambda: context)},
+                        )()
+                    },
+                )()
+            },
+        )()
+        generator = deps.get_session(request)
         session = await anext(generator)
         await generator.aclose()
         assert context.closed is True

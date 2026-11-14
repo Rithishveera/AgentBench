@@ -38,6 +38,10 @@ class Settings(BaseSettings):
         default_factory=list,
         validation_alias="ALLOWED_AGENT_HOSTS",
     )
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        validation_alias="CORS_ORIGINS",
+    )
     suites_dir: Path = Field(default=Path("suites"), validation_alias="SUITES_DIR")
 
     def __init__(self, **values: Any) -> None:
@@ -70,3 +74,12 @@ class Settings(BaseSettings):
         if isinstance(value, list) and all(isinstance(host, str) for host in value):
             return value
         raise ValueError("ALLOWED_AGENT_HOSTS must be a comma-separated string or list")
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: Any) -> list[str]:
+        if isinstance(value, str):
+            return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+        if isinstance(value, list) and all(isinstance(origin, str) for origin in value):
+            return [origin.rstrip("/") for origin in value]
+        raise ValueError("CORS_ORIGINS must be a comma-separated string or list")

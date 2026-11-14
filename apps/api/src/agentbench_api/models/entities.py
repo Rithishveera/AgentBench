@@ -52,6 +52,9 @@ class Agent(Base):
     max_concurrency: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, default=2, server_default="2"
     )
+    last_health_check_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

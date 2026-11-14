@@ -26,6 +26,7 @@ def upgrade() -> None:
         sa.Column(
             "max_concurrency", sa.SmallInteger(), server_default="2", nullable=False
         ),
+        sa.Column("last_health_check_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

@@ -50,3 +50,16 @@
 - `bulk_insert_steps(session: AsyncSession, run_id: UUID, events: list[StepEvent]) -> int`: inserts up to 100 events idempotently.
 - `mark_run_terminal(session, run_id, status, ...) -> bool`: records one terminal transition and only allows verdicts for completed runs.
 - `encrypt_agent_secret(secret: str, encryption_key: str | SecretStr | None = None) -> str` and `decrypt_agent_secret(encrypted_secret: str, encryption_key: str | SecretStr | None = None) -> str`: Fernet secret storage helpers.
+
+## M6
+- `create_app(settings: Settings | None = None, *, session_factory: async_sessionmaker[AsyncSession] | None = None, redis_client: Redis | None = None) -> FastAPI`: app factory with startup sync of suite metadata and strict request-size/problem JSON handling.
+- `RequestSizeLimitMiddleware`: 2MB body cap and problem-JSON 413 responses.
+- `validate_agent_url(url: str, allowed_hosts: tuple[str, ...] | list[str] = ()) -> PinnedAddress`: SSRF validation for agent URLs and private/metadata blocks.
+- `create_pinned_transport(pinned: PinnedAddress) -> PinnedIPTransport`: DNS-pin & Host/SNI transport for agent calls.
+- `redact_payload(obj: Any, secrets: Iterable[str] = ()) -> tuple[dict[str, Any], bool]`: recursively strips secrets and caps callback payload size at 64KB.
+- `require_api_key(request: Request, api_key: str | None = Header(...)) -> None`: X-API-Key auth dependency.
+- `require_run_token(run_id: UUID, request: Request, authorization: str | None = Header(...), session: AsyncSession = Depends(get_session)) -> Run`: bearer token auth for running callbacks.
+- `register_agent(...): POST /agents`, `list_agents(...): GET /agents`, `delete_agent(...): DELETE /agents/{id}`: agent lifecycle with SSRF health check and encrypted secret return.
+- `list_suites(...): GET /suites`, `list_suite_tasks(...): GET /suites/{id}/tasks`: public suite/task metadata only.
+- `get_run(...): GET /runs/{id}`, `get_run_steps(...): GET /runs/{id}/steps`: run and step read endpoints.
+- `ingest_steps(...)` and `complete_run(...)`: internal callback endpoints with bearer auth, redaction, bulk-insert, and Redis completion queueing.

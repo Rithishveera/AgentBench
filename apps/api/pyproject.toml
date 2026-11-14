@@ -10,6 +10,7 @@ dependencies = [
     "agentbench-task-spec",
     "sqlalchemy[asyncio]>=2.0.36,<3",
     "cryptography>=43,<47",
+    "redis>=5,<7",
     "pydantic-settings>=2.6.0",
     "python-dotenv>=1.0.1",
     "requests>=2.31,<3",
