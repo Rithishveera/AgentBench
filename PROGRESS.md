@@ -30,3 +30,12 @@
 - `validate_validator_types(tasks: Iterable[Task]) -> None`: startup preflight that rejects unregistered task validator types.
 - `validate_run(task: Task, artifact: bytes, sandbox: SandboxRunner) -> Verdict`: builds a visible-fixture context and dispatches to the registered validator.
 - `main(argv: list[str] | None = None) -> int`: QA CLI that checks reference and empty patches for every task in a suite.
+
+## M4
+- `RunRequest(...) -> RunRequest`, `StepEvent(...) -> StepEvent`, `CompleteRequest(...) -> CompleteRequest`, and `RunResult(...) -> RunResult`: strict, size-capped agent wire models.
+- `create_app(handler: Handler, secret: str | bytes, max_concurrency: int = 4) -> FastAPI`: creates an authenticated external-agent server.
+- `RunContext.step(event_type: StepType, payload: dict[str, Any], ...) -> None`: queues a bounded, redacted event for callback delivery.
+- `RunContext.tool(name: str) -> AsyncIterator[None]`: records tool timing and exception outcome.
+- `RunContext.openai_client() -> AsyncOpenAI`: creates an OpenAI-compatible client with automatic LLM/retry telemetry.
+- `AgentClient.start_run(agent_url: str, secret: str | bytes, run_request: RunRequest) -> None`: sends a signed run request without following redirects.
+- `serve(fn: Handler) -> None`: runs a plain async handler as an AgentBench agent.

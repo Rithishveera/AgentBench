@@ -1,5 +1,5 @@
-import agentbench_agent_sdk
+import agentbench_sdk
 
 
 def test_package_imports() -> None:
-    assert agentbench_agent_sdk.__doc__
+    assert agentbench_sdk.__doc__
