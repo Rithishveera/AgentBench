@@ -39,3 +39,14 @@
 - `RunContext.openai_client() -> AsyncOpenAI`: creates an OpenAI-compatible client with automatic LLM/retry telemetry.
 - `AgentClient.start_run(agent_url: str, secret: str | bytes, run_request: RunRequest) -> None`: sends a signed run request without following redirects.
 - `serve(fn: Handler) -> None`: runs a plain async handler as an AgentBench agent.
+
+## M5
+- `Agent`, `TaskRecord`, `Benchmark`, `Run`, and `Step`: PostgreSQL ORM tables with status/category/type constraints and required indexes.
+- `create_engine(settings: Settings) -> AsyncEngine`: builds the async engine with configured pool bounds.
+- `get_engine() -> AsyncEngine` and `get_session_factory() -> async_sessionmaker[AsyncSession]`: cached application engine/session factory.
+- `get_session() -> AsyncIterator[AsyncSession]`: FastAPI async database dependency.
+- `upsert_tasks(session: AsyncSession, suite: Suite) -> int`: upserts task specs while requiring a version increase for digest changes.
+- `claim_run(session: AsyncSession, run_id: UUID) -> Run | None`: atomically changes a queued run to running.
+- `bulk_insert_steps(session: AsyncSession, run_id: UUID, events: list[StepEvent]) -> int`: inserts up to 100 events idempotently.
+- `mark_run_terminal(session, run_id, status, ...) -> bool`: records one terminal transition and only allows verdicts for completed runs.
+- `encrypt_agent_secret(secret: str, encryption_key: str | SecretStr | None = None) -> str` and `decrypt_agent_secret(encrypted_secret: str, encryption_key: str | SecretStr | None = None) -> str`: Fernet secret storage helpers.

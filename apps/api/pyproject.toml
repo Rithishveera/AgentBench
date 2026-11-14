@@ -3,8 +3,13 @@ name = "agentbench-api"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "alembic>=1.14,<2",
+    "asyncpg>=0.30,<1",
     "docker>=7.1.0,<8",
+    "agentbench-sdk",
     "agentbench-task-spec",
+    "sqlalchemy[asyncio]>=2.0.36,<3",
+    "cryptography>=43,<47",
     "pydantic-settings>=2.6.0",
     "python-dotenv>=1.0.1",
     "requests>=2.31,<3",
@@ -12,6 +17,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
+agentbench-sdk = { workspace = true }
 agentbench-task-spec = { workspace = true }
 
 [build-system]
