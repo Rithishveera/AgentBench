@@ -67,7 +67,10 @@ async def register_agent(
         ) as client:
             response = await client.get(body.url.rstrip("/") + "/health")
     except (ValueError, httpx.HTTPError):
-        raise HTTPException(status_code=422, detail="Agent URL is invalid or unhealthy") from None
+        raise HTTPException(
+            status_code=422,
+            detail="Agent URL is invalid or unhealthy",
+        ) from None
     if response.status_code != 200:
         raise HTTPException(status_code=422, detail="Agent health check failed")
 

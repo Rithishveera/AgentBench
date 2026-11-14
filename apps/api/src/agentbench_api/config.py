@@ -79,7 +79,11 @@ class Settings(BaseSettings):
     @classmethod
     def parse_cors_origins(cls, value: Any) -> list[str]:
         if isinstance(value, str):
-            return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+            return [
+                origin.strip().rstrip("/")
+                for origin in value.split(",")
+                if origin.strip()
+            ]
         if isinstance(value, list) and all(isinstance(origin, str) for origin in value):
             return [origin.rstrip("/") for origin in value]
         raise ValueError("CORS_ORIGINS must be a comma-separated string or list")

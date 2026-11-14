@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
+from agentbench_sdk.schemas import CompleteRequest, StepEvent
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +15,6 @@ from agentbench_api.models import Run
 from agentbench_api.repositories import bulk_insert_steps, mark_run_terminal
 from agentbench_api.security.auth import require_run_token
 from agentbench_api.security.redact import redact_payload
-from agentbench_sdk.schemas import CompleteRequest, StepEvent
 
 router = APIRouter(tags=["internal"])
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -79,7 +79,11 @@ async def complete_run(
     if body.status == "success":
         artifact, _ = redact_payload(
             {"patch": body.patch, "answer": body.answer},
-            (token, settings.api_key.get_secret_value(), settings.encryption_key.get_secret_value()),
+            (
+                token,
+                settings.api_key.get_secret_value(),
+                settings.encryption_key.get_secret_value(),
+            ),
         )
         result = await session.execute(
             update(Run)
@@ -89,7 +93,10 @@ async def complete_run(
         )
         if result.scalar_one_or_none() is None:
             await session.rollback()
-            raise HTTPException(status_code=409, detail="Run completion was already received")
+            raise HTTPException(
+                status_code=409,
+                detail="Run completion was already received",
+            )
     else:
         completed = await mark_run_terminal(
             session,
@@ -100,7 +107,10 @@ async def complete_run(
         )
         if not completed:
             await session.rollback()
-            raise HTTPException(status_code=409, detail="Run completion was already received")
+            raise HTTPException(
+                status_code=409,
+                detail="Run completion was already received",
+            )
     await session.commit()
     await request.app.state.redis.lpush(f"run:{run_id}:done", str(run_id))
     return Response(status_code=204)

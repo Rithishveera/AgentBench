@@ -28,8 +28,8 @@ async def require_api_key(
 async def require_run_token(
     run_id: UUID,
     request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
     authorization: Annotated[str | None, Header()] = None,
-    session: AsyncSession = Depends(get_session),
 ) -> Run:
     run = await session.get(Run, run_id)
     if run is None:

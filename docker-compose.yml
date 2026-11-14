@@ -70,6 +70,23 @@ services:
     networks:
       - platform_net
 
+  worker:
+    profiles: ["worker"]
+    build:
+      context: .
+      dockerfile: infra/docker/qa-runner.Dockerfile
+    command: ["python", "-m", "agentbench_api.workers.tasks"]
+    environment:
+      API_KEY: ${API_KEY:?Set API_KEY in .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agentbench}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-agentbench}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - platform_net
+
 volumes:
   postgres_data:
   redis_data:

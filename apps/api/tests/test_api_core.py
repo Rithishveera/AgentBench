@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import os
 from contextlib import asynccontextmanager
@@ -8,13 +7,11 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from cryptography.fernet import Fernet
-from fastapi.testclient import TestClient
-
 from agentbench_api.config import Settings
-from agentbench_api.db import get_session_factory
 from agentbench_api.main import create_app
 from agentbench_api.models import Run
+from cryptography.fernet import Fernet
+from fastapi.testclient import TestClient
 
 
 @asynccontextmanager
@@ -34,7 +31,7 @@ class FakeSession:
     def __init__(self, *, data: list[Run] | None = None) -> None:
         self.data = data or []
 
-    async def __aenter__(self) -> "FakeSession":
+    async def __aenter__(self) -> FakeSession:
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
@@ -53,11 +50,14 @@ class FakeSession:
         class Result:
             def scalar_one_or_none(self):
                 return object()
+
             def scalars(self):
                 class Rows:
                     def all(self):
                         return [0]
+
                 return Rows()
+
         return Result()
 
     async def get(self, model, key):
@@ -70,6 +70,7 @@ class FakeSession:
         class Rows:
             def all(self):
                 return []
+
         return Rows()
 
     async def scalar(self, *args, **kwargs):
@@ -85,8 +86,10 @@ class FakeSession:
         class Nested:
             async def __aenter__(self):
                 return self
+
             async def __aexit__(self, exc_type, exc, tb):
                 return None
+
         return Nested()
 
 
@@ -94,10 +97,14 @@ class FakeSession:
 def app() -> object:
     os.environ["API_KEY"] = "api-key"
     os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
-    os.environ["DATABASE_URL"] = "postgresql+asyncpg://agentbench:pw@localhost/agentbench"
+    os.environ["DATABASE_URL"] = (
+        "postgresql+asyncpg://agentbench:pw@localhost/agentbench"
+    )
     os.environ["REDIS_URL"] = "redis://:pw@localhost:6379/0"
     settings = Settings(_env_file=None)
-    app = create_app(settings, session_factory=lambda: FakeSession(), redis_client=FakeRedis())
+    app = create_app(
+        settings, session_factory=lambda: FakeSession(), redis_client=FakeRedis()
+    )
     return app
 
 
@@ -143,7 +150,7 @@ async def test_run_token_must_match_run_and_not_expire() -> None:
             attempt_no=1,
             status="running",
             fault_plan={},
-            token_hash=hashlib.sha256("token-abc".encode()).hexdigest(),
+            token_hash=hashlib.sha256(b"token-abc").hexdigest(),
             token_expires_at=datetime.now(UTC) + timedelta(minutes=5),
         ),
         Run(
@@ -155,7 +162,7 @@ async def test_run_token_must_match_run_and_not_expire() -> None:
             attempt_no=1,
             status="running",
             fault_plan={},
-            token_hash=hashlib.sha256("other".encode()).hexdigest(),
+            token_hash=hashlib.sha256(b"other").hexdigest(),
             token_expires_at=datetime.now(UTC) + timedelta(minutes=5),
         ),
         Run(
@@ -167,7 +174,7 @@ async def test_run_token_must_match_run_and_not_expire() -> None:
             attempt_no=1,
             status="running",
             fault_plan={},
-            token_hash=hashlib.sha256("expired".encode()).hexdigest(),
+            token_hash=hashlib.sha256(b"expired").hexdigest(),
             token_expires_at=datetime.now(UTC) - timedelta(minutes=1),
         ),
     ]
@@ -182,17 +189,44 @@ async def test_run_token_must_match_run_and_not_expire() -> None:
         response = test_client.post(
             f"/internal/runs/{run_id}/steps",
             headers={"Authorization": "Bearer token-abc", "X-API-Key": "api-key"},
-            json=[{"seq": 0, "type": "tool", "started_at": "2026-11-14T00:00:00Z", "duration_ms": 2, "ok": True, "payload": {"x": 1}}],
+            json=[
+                {
+                    "seq": 0,
+                    "type": "tool",
+                    "started_at": "2026-11-14T00:00:00Z",
+                    "duration_ms": 2,
+                    "ok": True,
+                    "payload": {"x": 1},
+                }
+            ],
         )
         wrong_run = test_client.post(
             f"/internal/runs/{other_id}/steps",
             headers={"Authorization": "Bearer token-abc", "X-API-Key": "api-key"},
-            json=[{"seq": 0, "type": "tool", "started_at": "2026-11-14T00:00:00Z", "duration_ms": 2, "ok": True, "payload": {"x": 1}}],
+            json=[
+                {
+                    "seq": 0,
+                    "type": "tool",
+                    "started_at": "2026-11-14T00:00:00Z",
+                    "duration_ms": 2,
+                    "ok": True,
+                    "payload": {"x": 1},
+                }
+            ],
         )
         expired_response = test_client.post(
             f"/internal/runs/{run_rows[2].id}/steps",
             headers={"Authorization": "Bearer expired", "X-API-Key": "api-key"},
-            json=[{"seq": 0, "type": "tool", "started_at": "2026-11-14T00:00:00Z", "duration_ms": 2, "ok": True, "payload": {"x": 1}}],
+            json=[
+                {
+                    "seq": 0,
+                    "type": "tool",
+                    "started_at": "2026-11-14T00:00:00Z",
+                    "duration_ms": 2,
+                    "ok": True,
+                    "payload": {"x": 1},
+                }
+            ],
         )
         assert response.status_code == 204
         assert wrong_run.status_code == 403
@@ -203,7 +237,9 @@ async def test_run_token_must_match_run_and_not_expire() -> None:
 async def test_complete_on_non_running_run_is_conflict() -> None:
     os.environ["API_KEY"] = "api-key"
     os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
-    os.environ["DATABASE_URL"] = "postgresql+asyncpg://agentbench:pw@localhost/agentbench"
+    os.environ["DATABASE_URL"] = (
+        "postgresql+asyncpg://agentbench:pw@localhost/agentbench"
+    )
     os.environ["REDIS_URL"] = "redis://:pw@localhost:6379/0"
     settings = Settings(_env_file=None)
     completed_run = Run(
@@ -215,7 +251,7 @@ async def test_complete_on_non_running_run_is_conflict() -> None:
         attempt_no=1,
         status="completed",
         fault_plan={},
-        token_hash=hashlib.sha256("token-ok".encode()).hexdigest(),
+        token_hash=hashlib.sha256(b"token-ok").hexdigest(),
         token_expires_at=datetime.now(UTC) + timedelta(minutes=5),
         verdict={"passed": True},
     )

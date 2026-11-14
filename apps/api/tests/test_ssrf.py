@@ -4,7 +4,6 @@ import socket
 
 import httpx
 import pytest
-
 from agentbench_api.security.ssrf import (
     PinnedAddress,
     create_pinned_transport,

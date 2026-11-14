@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from agentbench_tasks.loader import Suite, task_digest
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from agentbench_api.security.auth import require_api_key
-from agentbench_tasks.loader import Suite, task_digest
 
 router = APIRouter(prefix="/suites", tags=["suites"])
 ApiKey = Annotated[None, Depends(require_api_key)]

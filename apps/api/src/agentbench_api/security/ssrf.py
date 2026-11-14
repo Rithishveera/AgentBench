@@ -64,7 +64,9 @@ def validate_agent_url(
 
     parsed_addresses = [ipaddress.ip_address(address) for address in addresses]
     if not allowlisted and any(not address.is_global for address in parsed_addresses):
-        raise ValueError("agent host resolves to a private, loopback, or reserved address")
+        raise ValueError(
+            "agent host resolves to a private, loopback, or reserved address"
+        )
     return PinnedAddress(
         scheme=parsed.scheme,
         hostname=hostname,
@@ -80,7 +82,9 @@ class PinnedIPTransport(httpx.AsyncHTTPTransport):
         self._pinned = pinned
 
     def _pin_request(self, request: httpx.Request) -> httpx.Request:
-        request_port = request.url.port or (443 if request.url.scheme == "https" else 80)
+        request_port = request.url.port or (
+            443 if request.url.scheme == "https" else 80
+        )
         if (
             request.url.scheme != self._pinned.scheme
             or request.url.host.rstrip(".").casefold() != self._pinned.hostname

@@ -25,4 +25,6 @@ def test_redacts_sensitive_keys_nested_and_secret_patterns() -> None:
 def test_truncates_serialized_payload_to_cap() -> None:
     payload, truncated = redact_payload({"message": "x" * (MAX_STEP_PAYLOAD_BYTES * 2)})
     assert truncated is True
-    assert len(json.dumps(payload, ensure_ascii=False).encode()) <= MAX_STEP_PAYLOAD_BYTES
+    assert (
+        len(json.dumps(payload, ensure_ascii=False).encode()) <= MAX_STEP_PAYLOAD_BYTES
+    )

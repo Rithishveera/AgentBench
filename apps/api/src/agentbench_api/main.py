@@ -8,6 +8,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+import structlog
+import yaml
+from agentbench_tasks.loader import Suite, load_suite
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,17 +19,16 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
-import structlog
-import yaml
 
 from agentbench_api.config import Settings
 from agentbench_api.db import create_engine
 from agentbench_api.repositories import upsert_tasks
 from agentbench_api.routers.agents import router as agents_router
+from agentbench_api.routers.benchmarks import router as benchmarks_router
 from agentbench_api.routers.internal import router as internal_router
+from agentbench_api.routers.results import router as results_router
 from agentbench_api.routers.runs import router as runs_router
 from agentbench_api.routers.suites import router as suites_router
-from agentbench_tasks.loader import Suite, load_suite
 
 MAX_REQUEST_BYTES = 2 * 1024 * 1024
 logger = structlog.get_logger(__name__)
@@ -115,7 +117,11 @@ def _suite_directories(root: Path) -> list[Path]:
 
 def _public_suite_data(suite_dir: Path) -> dict[str, Any]:
     metadata = yaml.safe_load((suite_dir / "suite.yaml").read_text(encoding="utf-8"))
-    title = metadata.get("title", suite_dir.name) if isinstance(metadata, dict) else suite_dir.name
+    title = (
+        metadata.get("title", suite_dir.name)
+        if isinstance(metadata, dict)
+        else suite_dir.name
+    )
     return {"id": suite_dir.name, "title": title}
 
 
@@ -239,6 +245,8 @@ def create_app(
 
     app.include_router(agents_router)
     app.include_router(suites_router)
+    app.include_router(benchmarks_router)
+    app.include_router(results_router)
     app.include_router(runs_router)
     app.include_router(internal_router, prefix="/internal")
     return app

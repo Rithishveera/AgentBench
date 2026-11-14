@@ -63,3 +63,17 @@
 - `list_suites(...): GET /suites`, `list_suite_tasks(...): GET /suites/{id}/tasks`: public suite/task metadata only.
 - `get_run(...): GET /runs/{id}`, `get_run_steps(...): GET /runs/{id}/steps`: run and step read endpoints.
 - `ingest_steps(...)` and `complete_run(...)`: internal callback endpoints with bearer auth, redaction, bulk-insert, and Redis completion queueing.
+
+## M7
+- `BenchmarkRequest(...) -> BenchmarkRequest`, `create_benchmark(...) -> Benchmark`: validates suite/agent bounds and materializes queued benchmark runs with repetition-aware scheduling.
+- `execute_run(run_id: UUID, *, ...) -> bool`: claims queued work, mints a callback token, starts the agent, waits for Redis completion, and finalizes the run verdict while invalidating the token.
+- `finalize_benchmark(benchmark_id: UUID, *, ...) -> dict[str, Any]`: aggregates child run outcomes and marks the benchmark terminal after all child runs finish.
+- `WorkerConfig(max_jobs=4, job_timeout=300, retries=3)` and `reaper(...)`: worker configuration and reaper entry points for queue-driven execution and stale-run cleanup.
+- `POST /benchmarks` and `GET /benchmarks/{benchmark_id}`: benchmark orchestration endpoints that validate suite metadata, enqueue work, and expose benchmark state.
+
+## M8
+- `success_rate(...)`, `wilson_interval(...)`, `pass_at_k(...)`, and `summarize_runs(...)`: pure scoring utilities with infra-error exclusion, confidence intervals, and descriptive run metrics.
+- `finalize_benchmark(...)`: aggregates overall and per-agent outcomes, task digests, and task-level pass counts into the benchmark summary.
+- `GET /results/leaderboard`: returns latest per-agent scores using one database query, category/suite filters, and ETag caching.
+- `GET /results/compare`: compares benchmark-level and per-task deltas only when suite and task digests match.
+- `docs/metrics.md`: defines scoring formulas, denominator semantics, percentile calculations, and a worked example.
