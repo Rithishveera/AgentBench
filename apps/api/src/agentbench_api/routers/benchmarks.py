@@ -56,6 +56,7 @@ async def create_benchmark_route(
         list(body.agent_ids),
         repetitions=body.repetitions,
         fault_flags=body.fault_flags,
+        paired=body.paired,
         seed=body.seed,
         suites=suites,
     )
@@ -69,9 +70,17 @@ async def create_benchmark_route(
         "run:queue",
         *[str(run_id) for run_id in run_ids],
     )
-    return {
+    response: dict[str, object] = {
         "id": benchmark.id,
         "status": benchmark.status,
         "run_count": len(run_ids),
         "suite_id": benchmark.suite_id,
     }
+    if benchmark.paired:
+        response["warning"] = (
+            "Paired mode doubles the intended benchmark spend because each run is "
+            "executed once as a baseline and once with injected faults."
+        )
+        response["estimated_spend_multiplier"] = 2.0
+        response["estimated_spend_usd"] = round(len(run_ids) * 0.05, 2)
+    return response

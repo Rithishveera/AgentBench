@@ -77,3 +77,22 @@
 - `GET /results/leaderboard`: returns latest per-agent scores using one database query, category/suite filters, and ETag caching.
 - `GET /results/compare`: compares benchmark-level and per-task deltas only when suite and task digests match.
 - `docs/metrics.md`: defines scoring formulas, denominator semantics, percentile calculations, and a worked example.
+
+## M9
+- `mint_run_key(run_id, allowed_models, *, max_budget_usd, ttl, settings) -> str`: creates a LiteLLM virtual key scoped to one run, model set, spend cap, and lifetime.
+- `managed_run_key(...) -> AsyncIterator[str]` and `revoke_key(key, *, settings) -> None`: ensure the virtual key is revoked when run execution exits, including exceptions.
+- `get_run_usage(run_id, *, settings, session_factory) -> dict[str, int | float]`: reads token counts, spend, and call count from LiteLLM spend logs using the persisted key digest.
+- `record_run_usage(run_id, *, budget_usd, settings, session_factory) -> dict[str, int | float]`: persists gateway usage and turns budget rejection into `agent_error` with `failure_cause=budget_exceeded`.
+- `summarize_runs(...)`: adds cost per success, mean cost per run, and cost distribution buckets to benchmark summaries.
+- `GET /internal/health`: health endpoint exposed through the agent ingress alongside `/health` and `/internal/*` callbacks.
+- `make check-agent-network`: runs the plain-coder image connectivity probe against the Compose network boundary.
+- `infra/litellm/config.yaml`, `infra/nginx/agents.conf`, and `docs/networking.md`: env-backed gateway configuration and the agent-facing route/network policy.
+
+## M10
+- `FaultSpec(...) -> FaultSpec` and `FaultPlan(...) -> FaultPlan`: typed, replayable fault schedules tied to a benchmark seed and run ID.
+- `plan_faults(benchmark_seed, run_id, fault_flags) -> FaultPlan`: deterministically schedules 429s, latency spikes, empty responses, and 5xx errors.
+- `LiteLLMFaultHook.async_pre_call_hook(...)`: applies per-run faults using shared Redis call counters and records injected events for later persistence.
+- `classify_reactions(fault_events, steps) -> list[str]` and `drain_run_faults(run_id, *, redis_client, session) -> list[dict[str, Any]]`: classify agent reactions and persist fault events.
+- `BenchmarkRequest.paired` and `Run.fault_mode`: optionally create baseline/faulted run pairs without mixing their fault plans.
+- `summarize_runs(...)`: reports resilience and recovery rate for comparable baseline/faulted runs; definitions are in `docs/metrics.md`.
+- `make check`: verified with Ruff, strict Mypy, and pytest (`139 passed, 16 skipped`).

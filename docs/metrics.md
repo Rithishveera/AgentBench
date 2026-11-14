@@ -130,3 +130,43 @@ The failure map is:
 - `infra_error`: 1
 
 Per-task pass^1 is a macro-average across tasks. It can differ from the benchmark-level success rate, which is a micro-average across scored runs.
+
+## Fault resilience and recovery
+
+When a benchmark is run in paired mode, each task+attempt pair is executed once
+without injected faults and once with the planned fault schedule. The resilience
+metric compares the faulted run's success rate to the baseline run's success
+rate:
+
+$$
+\text{resilience} = \frac{\text{success\_rate}_{\text{faulted}}}{\text{success\_rate}_{\text{baseline}}}
+$$
+
+with the convention that resilience is 0.0 when the baseline success rate is 0.
+We also report Wilson 95% confidence intervals for both success-rate estimates.
+The recovery rate is the fraction of injected faults that the agent handled by
+retrying successfully:
+
+$$
+\text{recovery\_rate} = \frac{\#\{\text{faults classified as retried\_ok}\}}{\#\{\text{faults injected}\}}
+$$
+
+This distinguishes an agent that simply fails under fault pressure from one that
+recovers by retrying, degrading gracefully, or ignoring a non-critical fault.
+
+## Cost and token usage
+
+Token counts and cost come from LiteLLM spend logs, not agent-reported step
+payloads. For a benchmark, `cost_per_success_usd` is total recorded spend across
+all runs, including infrastructure failures, divided by successful runs. It is
+0 when there are no successful runs. `mean_cost_per_run_usd` divides total
+recorded spend by all runs with a stored cost. This keeps spend from failed or
+infrastructure-error attempts visible.
+
+`cost_distribution_usd` counts runs in these mutually exclusive buckets:
+
+- `zero`: $0
+- `under_0_01`: $0 < cost < $0.01
+- `0_01_to_0_10`: $0.01 <= cost < $0.10
+- `0_10_to_1`: $0.10 <= cost < $1.00
+- `1_or_more`: cost >= $1.00

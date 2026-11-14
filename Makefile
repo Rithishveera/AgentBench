@@ -1,4 +1,4 @@
-.PHONY: up down check test fmt sandbox-image qa-tasks migrate
+.PHONY: up down check test fmt sandbox-image qa-tasks migrate check-agent-network
 
 up:
 	docker compose up -d --wait
@@ -27,3 +27,6 @@ qa-tasks:
 
 migrate:
 	uv run --package agentbench-api alembic upgrade head
+
+check-agent-network:
+	docker compose --profile network-check run --rm --build plain-coder-network-check

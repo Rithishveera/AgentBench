@@ -113,28 +113,44 @@ class RunContext:
         except (UnicodeDecodeError, json.JSONDecodeError):
             request_data = {}
         usage = response_data.get("usage", {})
+        error = response_data.get("error")
+        error_text = (
+            " ".join(
+                str(error.get(field) or "") for field in ("message", "type", "code")
+            )
+            if isinstance(error, dict)
+            else str(error or "")
+        ).casefold()
+        budget_exceeded = (
+            response.status_code in {402, 429}
+            and "budget" in error_text
+            and "exceed" in error_text
+        )
         retry_count = request.headers.get("x-stainless-retry-count", "0")
         try:
             is_retry = int(retry_count) > 0
         except ValueError:
             is_retry = False
+        payload = {
+            "model": response_data.get("model", request_data.get("model")),
+            "status_code": response.status_code,
+            "usage": {
+                key: usage[key]
+                for key in (
+                    "prompt_tokens",
+                    "completion_tokens",
+                    "total_tokens",
+                    "input_tokens",
+                    "output_tokens",
+                )
+                if key in usage
+            },
+        }
+        if budget_exceeded:
+            payload["budget_exceeded"] = True
         await self.step(
             "retry" if is_retry else "llm",
-            {
-                "model": response_data.get("model", request_data.get("model")),
-                "status_code": response.status_code,
-                "usage": {
-                    key: usage[key]
-                    for key in (
-                        "prompt_tokens",
-                        "completion_tokens",
-                        "total_tokens",
-                        "input_tokens",
-                        "output_tokens",
-                    )
-                    if key in usage
-                },
-            },
+            payload,
             ok=response.is_success,
             started_at=str(started_at),
             duration_ms=int((time.monotonic() - float(started)) * 1000),

@@ -9,6 +9,7 @@ COPY packages/agent-sdk/pyproject.toml packages/agent-sdk/pyproject.toml
 COPY packages/task-spec/pyproject.toml packages/task-spec/pyproject.toml
 COPY packages/agent-sdk/src packages/agent-sdk/src
 COPY agents/plain-coder/agent.py agents/plain-coder/agent.py
+COPY agents/plain-coder/network_probe.py agents/plain-coder/network_probe.py
 
 RUN uv sync --frozen --package agentbench-sdk --no-dev
 

@@ -104,6 +104,9 @@ class Benchmark(Base):
     status: Mapped[str] = mapped_column(
         String(24), nullable=False, default="queued", server_default="queued"
     )
+    paired: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     summary: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     seed: Mapped[int] = mapped_column(BigInteger, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -124,6 +127,10 @@ class Run(Base):
             "(status = 'completed' AND verdict IS NOT NULL) OR "
             "(status <> 'completed' AND verdict IS NULL)",
             name="ck_run_verdict_status",
+        ),
+        CheckConstraint(
+            "fault_mode IN ('none', 'faulted')",
+            name="ck_run_fault_mode",
         ),
         CheckConstraint("attempt_no >= 1", name="ck_run_attempt_no"),
         CheckConstraint("steps_count >= 0", name="ck_run_steps_count"),
@@ -162,6 +169,9 @@ class Run(Base):
     status: Mapped[str] = mapped_column(
         String(24), nullable=False, default="queued", server_default="queued"
     )
+    fault_mode: Mapped[str] = mapped_column(
+        String(12), nullable=False, default="none", server_default="none"
+    )
     artifact: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     verdict: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     failure_cause: Mapped[str | None] = mapped_column(String(64))
@@ -186,6 +196,7 @@ class Run(Base):
     fault_plan: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict
     )
+    litellm_key_hash: Mapped[str | None] = mapped_column(String(64))
     token_hash: Mapped[str | None] = mapped_column(String(64))
     token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -195,6 +206,33 @@ class Run(Base):
     error: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class FaultEvent(Base):
+    __tablename__ = "fault_event"
+    __table_args__ = (
+        CheckConstraint(
+            "fault_type IN ('rate_limit_429', 'latency_spike', "
+            "'empty_response', 'error_5xx')",
+            name="ck_fault_event_type",
+        ),
+        CheckConstraint(
+            "agent_reaction IN ('retried_ok', 'gave_up', 'degraded', "
+            "'ignored', 'none')",
+            name="ck_fault_event_reaction",
+        ),
+    )
+
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("run.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fault_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    agent_reaction: Mapped[str | None] = mapped_column(String(32))
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
 
 class Step(Base):

@@ -1,0 +1,16 @@
+model_list:
+  - model_name: os.environ/LITELLM_MODEL
+    litellm_params:
+      model: os.environ/LITELLM_UPSTREAM_MODEL
+      api_key: os.environ/OPENAI_API_KEY
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/LITELLM_DATABASE_URL
+  fail_closed_budget_enforcement: true
+  store_prompts_in_spend_logs: false
+  disable_spend_logs: false
+
+litellm_settings:
+  global_disable_no_log_param: true
+  turn_off_message_logging: true

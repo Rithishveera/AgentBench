@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+from uuid import uuid4
+
 import pytest
+from agentbench_api.services.metrics import record_run_usage
 from agentbench_api.services.scorer import (
     pass_at_k,
     success_rate,
@@ -44,3 +48,95 @@ def test_summary_ignores_infra_errors_for_scoring() -> None:
     assert summary["success_rate"] == pytest.approx(0.25)
     assert summary["n"] == 4
     assert summary["infra_error_count"] == 1
+
+
+def test_cost_metrics_include_all_spend_and_bucket_each_run() -> None:
+    summary = summarize_runs(
+        [
+            {"status": "completed", "passed": True, "cost_usd": 0.02},
+            {"status": "completed", "passed": False, "cost_usd": 0.04},
+            {"status": "infra_error", "cost_usd": 0.10},
+        ]
+    )
+
+    assert summary["cost_per_success_usd"] == pytest.approx(0.16)
+    assert summary["mean_cost_per_run_usd"] == pytest.approx(0.16 / 3)
+    assert summary["cost_distribution_usd"] == {
+        "zero": 0,
+        "under_0_01": 0,
+        "0_01_to_0_10": 2,
+        "0_10_to_1": 1,
+        "1_or_more": 0,
+    }
+
+
+class _FakeScalarResult:
+    def __init__(self, values: list[tuple[str, dict[str, object]]]) -> None:
+        self.values = values
+
+    def all(self) -> list[tuple[str, dict[str, object]]]:
+        return self.values
+
+
+class _FakeSession:
+    def __init__(self, run: SimpleNamespace, payloads: list[dict[str, object]]) -> None:
+        self.run = run
+        self.payloads = payloads
+
+    async def __aenter__(self) -> _FakeSession:
+        return self
+
+    async def __aexit__(self, *_args: object) -> None:
+        return None
+
+    async def get(self, _model: object, _run_id: object) -> SimpleNamespace:
+        return self.run
+
+    async def execute(self, _statement: object) -> _FakeScalarResult:
+        return _FakeScalarResult([("llm", payload) for payload in self.payloads])
+
+    async def commit(self) -> None:
+        return None
+
+
+class _FakeSessionFactory:
+    def __init__(self, run: SimpleNamespace, payloads: list[dict[str, object]]) -> None:
+        self.run = run
+        self.payloads = payloads
+
+    def __call__(self) -> _FakeSession:
+        return _FakeSession(self.run, self.payloads)
+
+
+@pytest.mark.asyncio
+async def test_record_run_usage_classifies_gateway_budget_rejection(
+    monkeypatch,
+) -> None:
+    run = SimpleNamespace(
+        tokens_in=0,
+        tokens_out=0,
+        cost_usd=0,
+        status="completed",
+        verdict={"passed": True},
+        failure_cause=None,
+        error=None,
+    )
+    factory = _FakeSessionFactory(run, [{"budget_exceeded": True}])
+
+    async def usage(*_args: object, **_kwargs: object) -> dict[str, int | float]:
+        return {"tokens_in": 20, "tokens_out": 8, "cost_usd": 0.95, "calls": 2}
+
+    monkeypatch.setattr("agentbench_api.services.metrics.get_run_usage", usage)
+
+    await record_run_usage(
+        uuid4(),
+        budget_usd=1.0,
+        session_factory=factory,
+    )
+
+    assert run.tokens_in == 20
+    assert run.tokens_out == 8
+    assert float(run.cost_usd) == pytest.approx(0.95)
+    assert run.status == "agent_error"
+    assert run.verdict is None
+    assert run.failure_cause == "budget_exceeded"

@@ -30,6 +30,25 @@ class Settings(BaseSettings):
     encryption_key: SecretStr = Field(validation_alias="ENCRYPTION_KEY")
     database_url: SecretStr = Field(validation_alias="DATABASE_URL")
     redis_url: SecretStr = Field(validation_alias="REDIS_URL")
+    litellm_master_key: SecretStr | None = Field(
+        default=None,
+        validation_alias="LITELLM_MASTER_KEY",
+    )
+    litellm_url: str = Field(
+        default="http://litellm:4000",
+        min_length=1,
+        validation_alias="LITELLM_URL",
+    )
+    litellm_model: str = Field(
+        default="agentbench-default",
+        min_length=1,
+        validation_alias="LITELLM_MODEL",
+    )
+    agent_callback_base_url: str = Field(
+        default="http://agent-ingress:8080/internal",
+        min_length=1,
+        validation_alias="AGENT_CALLBACK_BASE_URL",
+    )
     db_pool_size: int = Field(default=5, ge=1, le=50, validation_alias="DB_POOL_SIZE")
     db_max_overflow: int = Field(
         default=10, ge=0, le=50, validation_alias="DB_MAX_OVERFLOW"

@@ -161,3 +161,35 @@ async def test_llm_retry_after_server_error_is_marked_retry() -> None:
     assert response.status_code == 202
     assert attempts == 2
     assert [event["type"] for event in receiver.steps.values()] == ["llm", "retry"]
+
+
+async def test_llm_budget_rejection_emits_boolean_signal_only() -> None:
+    receiver = _Receiver()
+
+    async def llm_reply(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            429,
+            json={"error": {"message": "Budget has been exceeded"}},
+        )
+
+    async def handler(ctx: Any) -> RunResult:
+        await ctx.openai_client().chat.completions.create(
+            model=ctx.llm.model,
+            messages=[{"role": "user", "content": "budget"}],
+        )
+        return RunResult(answer="unreachable")
+
+    app = create_app(handler, "shared-secret")
+    app.state.callback_transport = httpx.MockTransport(receiver)
+    app.state.llm_transport = httpx.MockTransport(llm_reply)
+    response = await _run(app, receiver, _request())
+
+    assert response.status_code == 202
+    budget_steps = [
+        event
+        for event in receiver.steps.values()
+        if event["payload"].get("budget_exceeded") is True
+    ]
+    assert budget_steps
+    assert all("message" not in event["payload"] for event in budget_steps)
+    assert FAKE_LLM_KEY not in str(budget_steps)

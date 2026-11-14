@@ -25,6 +25,7 @@ class BenchmarkRequest(BaseModel):
     agent_ids: list[UUID] = Field(min_length=1, max_length=MAX_AGENT_IDS)
     repetitions: int = Field(default=1, ge=1, le=1000)
     fault_flags: dict[str, Any] = Field(default_factory=dict)
+    paired: bool = Field(default=False)
     seed: int | None = Field(default=None, ge=0, le=2**63 - 1)
 
 
@@ -35,6 +36,7 @@ async def create_benchmark(
     *,
     repetitions: int = 1,
     fault_flags: dict[str, Any] | None = None,
+    paired: bool = False,
     seed: int | None = None,
     suites: dict[str, Suite] | None = None,
 ) -> Benchmark:
@@ -80,6 +82,7 @@ async def create_benchmark(
         agent_ids=list(agent_ids),
         repetitions=repetitions,
         fault_flags=fault_flags or {},
+        paired=paired,
         status="queued",
         seed=seed if seed is not None else random.randrange(0, 2**63),
     )
@@ -89,17 +92,30 @@ async def create_benchmark(
     for task in suite.tasks:
         for agent_id in agent_ids:
             for attempt_no in range(1, repetitions + 1):
-                session.add(
-                    Run(
-                        benchmark_id=benchmark.id,
-                        agent_id=agent_id,
-                        task_id=task.id,
-                        task_digest=task_digest(task),
-                        attempt_no=attempt_no,
-                        status="queued",
-                        fault_plan=fault_flags or {},
+                variants: list[tuple[str, dict[str, Any]]] = [("none", {})]
+                if paired:
+                    variants.append(("faulted", fault_flags or {}))
+                else:
+                    variants = [
+                        (
+                            "faulted" if (fault_flags or {}) else "none",
+                            fault_flags or {},
+                        )
+                    ]
+
+                for fault_mode, fault_plan in variants:
+                    session.add(
+                        Run(
+                            benchmark_id=benchmark.id,
+                            agent_id=agent_id,
+                            task_id=task.id,
+                            task_digest=task_digest(task),
+                            attempt_no=attempt_no,
+                            status="queued",
+                            fault_mode=fault_mode,
+                            fault_plan=fault_plan,
+                        )
                     )
-                )
     await session.commit()
     await session.refresh(benchmark)
     return benchmark

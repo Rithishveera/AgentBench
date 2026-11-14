@@ -45,6 +45,7 @@ services:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init-litellm.sql:/docker-entrypoint-initdb.d/10-litellm.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -70,6 +71,91 @@ services:
     networks:
       - platform_net
 
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic upgrade head && uvicorn agentbench_api.main:create_app --factory --host 0.0.0.0 --port 8000",
+      ]
+    environment:
+      API_KEY: ${API_KEY:?Set API_KEY in .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agentbench}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-agentbench}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
+      SUITES_DIR: /workspace/suites
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - platform_net
+
+  agent-ingress:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./infra/nginx/agents.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - platform_net
+      - agents_net
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ["--config", "/app/config.yaml"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY in .env}
+      LITELLM_DATABASE_URL: postgresql://${POSTGRES_USER:-agentbench}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/litellm
+      LITELLM_MODEL: ${LITELLM_MODEL:-agentbench-default}
+      LITELLM_UPSTREAM_MODEL: ${LITELLM_UPSTREAM_MODEL:-openai/gpt-4o-mini}
+      PROXY_BATCH_WRITE_AT: "1"
+      LITELLM_TELEMETRY_DISABLED: "true"
+      DISABLE_ADMIN_UI: "true"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env}
+    volumes:
+      - ./infra/litellm/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/readiness', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks:
+      - platform_net
+      - agents_net
+
   worker:
     profiles: ["worker"]
     build:
@@ -81,11 +167,54 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agentbench}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-agentbench}
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY in .env}
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MODEL: ${LITELLM_MODEL:-agentbench-default}
+      AGENT_CALLBACK_BASE_URL: http://agent-ingress:8080/internal
+      SUITES_DIR: /workspace/suites
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
+      litellm:
+        condition: service_healthy
+      agent-ingress:
+        condition: service_healthy
     networks:
       - platform_net
+      - agents_net
+
+  plain-coder:
+    profiles: ["agents"]
+    build:
+      context: .
+      dockerfile: agents/plain-coder/Dockerfile
+    environment:
+      AGENT_SECRET: ${PLAIN_CODER_SECRET:?Set PLAIN_CODER_SECRET in .env}
+      LITELLM_URL: http://litellm:4000/v1
+    networks:
+      - agents_net
+
+  plain-coder-network-check:
+    profiles: ["network-check"]
+    build:
+      context: .
+      dockerfile: agents/plain-coder/Dockerfile
+    command: ["python", "agents/plain-coder/network_probe.py"]
+    environment:
+      LITELLM_HEALTH_URL: http://litellm:4000/health/readiness
+      INTERNAL_HEALTH_URL: http://agent-ingress:8080/internal/health
+      AGENT_HEALTH_URL: http://agent-ingress:8080/health
+    depends_on:
+      litellm:
+        condition: service_healthy
+      agent-ingress:
+        condition: service_healthy
+    networks:
+      - agents_net
 
 volumes:
   postgres_data:
@@ -94,3 +223,4 @@ volumes:
 networks:
   platform_net:
   agents_net:
+    internal: true

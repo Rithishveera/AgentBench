@@ -22,6 +22,11 @@ RunToken = Annotated[Run, Depends(require_run_token)]
 StepBatch = Annotated[list[StepEvent], Body(max_length=100)]
 
 
+@router.get("/health")
+async def internal_health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @router.post("/runs/{run_id}/steps", status_code=204)
 async def ingest_steps(
     run_id: UUID,

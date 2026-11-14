@@ -72,6 +72,28 @@ def _failure_cause(run: dict[str, Any]) -> str:
     return "test_failure"
 
 
+def _cost_distribution(values: Sequence[float]) -> dict[str, int]:
+    buckets = {
+        "zero": 0,
+        "under_0_01": 0,
+        "0_01_to_0_10": 0,
+        "0_10_to_1": 0,
+        "1_or_more": 0,
+    }
+    for value in values:
+        if value == 0:
+            buckets["zero"] += 1
+        elif value < 0.01:
+            buckets["under_0_01"] += 1
+        elif value < 0.10:
+            buckets["0_01_to_0_10"] += 1
+        elif value < 1:
+            buckets["0_10_to_1"] += 1
+        else:
+            buckets["1_or_more"] += 1
+    return buckets
+
+
 def summarize_runs(runs: Sequence[dict[str, Any]]) -> dict[str, Any]:
     scored = [
         run
@@ -90,6 +112,54 @@ def summarize_runs(runs: Sequence[dict[str, Any]]) -> dict[str, Any]:
     infra_error_count = sum(
         1 for run in runs if str(run.get("status") or "") == "infra_error"
     )
+    baseline = [run for run in runs if str(run.get("fault_mode") or "") == "none"]
+    faulted = [run for run in runs if str(run.get("fault_mode") or "") == "faulted"]
+    if baseline:
+        baseline_passed = sum(
+            1
+            for run in baseline
+            if str(run.get("status") or "") == "completed"
+            and bool(run.get("passed", False))
+        )
+        baseline_total = len(
+            [
+                run
+                for run in baseline
+                if str(run.get("status") or "")
+                in {"completed", "agent_error", "timeout"}
+            ]
+        )
+        baseline_rate = success_rate(baseline_passed, baseline_total)
+    else:
+        baseline_rate = 0.0
+    if faulted:
+        faulted_passed = sum(
+            1
+            for run in faulted
+            if str(run.get("status") or "") == "completed"
+            and bool(run.get("passed", False))
+        )
+        faulted_total = len(
+            [
+                run
+                for run in faulted
+                if str(run.get("status") or "")
+                in {"completed", "agent_error", "timeout"}
+            ]
+        )
+        faulted_rate = success_rate(faulted_passed, faulted_total)
+    else:
+        faulted_rate = 0.0
+    resilience = faulted_rate / baseline_rate if baseline_rate > 0.0 else 0.0
+    faulted_runs = [
+        run for run in runs if str(run.get("fault_mode") or "") == "faulted"
+    ]
+    recovery_events = [
+        str(run.get("agent_reaction") or "")
+        for run in faulted_runs
+        if str(run.get("agent_reaction") or "") == "retried_ok"
+    ]
+    recovery_rate = len(recovery_events) / len(faulted_runs) if faulted_runs else 0.0
     failure_counts: dict[str, int] = {}
     for run in runs:
         cause = _failure_cause(run)
@@ -111,6 +181,12 @@ def summarize_runs(runs: Sequence[dict[str, Any]]) -> dict[str, Any]:
         for run in runs
         if run.get("tool_calls") is not None
     ]
+    costs = [
+        float(run.get("cost_usd") or 0.0)
+        for run in runs
+        if run.get("cost_usd") is not None
+    ]
+    total_cost = sum(costs)
     return {
         "success_rate": float(score),
         "ci": [float(lower), float(upper)],
@@ -126,7 +202,12 @@ def summarize_runs(runs: Sequence[dict[str, Any]]) -> dict[str, Any]:
             1 for run in runs if str(run.get("status") or "") == "timeout"
         ),
         "infra_error_count": infra_error_count,
+        "resilience": resilience,
+        "recovery_rate": recovery_rate,
         "failure_causes": failure_counts,
+        "cost_per_success_usd": (total_cost / passed) if passed else 0.0,
+        "mean_cost_per_run_usd": (total_cost / len(costs)) if costs else 0.0,
+        "cost_distribution_usd": _cost_distribution(costs),
         "duration_ms": {
             "p50": _nearest_rank(duration_values, 50),
             "p95": _nearest_rank(duration_values, 95),
