@@ -113,3 +113,20 @@
 - `RunContext._llm_response(...)`: LLM step events include prompt and response content under existing redaction and payload-size limits.
 - `/runs/{id}`, `RunHeader`, `RunTimelineIsland`, `RunInspector`, `RunStepCard`, `StepPayloadDetail`, `TimeRuler`, `RunVerdictPanel`, `PayloadView`, and `formatUtcTime(value) -> string`: reviewer timeline with filters, keyboard controls, lazy escaped payloads, fault markers, proportional timing, virtualization, and validator patch/test details.
 - `make check` gates (run directly because `make`/`uv` are unavailable): Ruff, formatting, strict Mypy, pytest, web typecheck/tests/build, and client API-key scan pass; the 1,000-step summary projection stays payload-free and under 40 KB.
+
+## M13
+- `channel(benchmark_id: UUID) -> str`: returns the Redis pub/sub channel key `bench:{id}`.
+- `publish(redis: Redis, benchmark_id: UUID, event: dict[str, Any]) -> None`: fire-and-forget publish of a run status event to the benchmark channel; silently ignores Redis errors.
+- `BenchmarkHub(redis, benchmark_id)`: per-benchmark Redis subscriber that fans out to N `asyncio.Queue[str | None]` subscriber queues; drops slow-client queues and sends a `None` resync signal; caps messages at 32 KB.
+- `HubRegistry`: process-local `{UUID: BenchmarkHub}` registry with `get(redis, benchmark_id) -> BenchmarkHub` and `remove(benchmark_id) -> None`.
+- `create_ticket(redis: Redis, benchmark_id: UUID) -> str`: stores a 30-second single-use token in Redis at key `ws:ticket:{token}`.
+- `consume_ticket(redis: Redis, token: str, benchmark_id: UUID) -> bool`: atomically `GETDEL`-verifies and burns the ticket; returns `False` if missing, expired, or wrong benchmark.
+- `build_snapshot(session: AsyncSession, benchmark_id: UUID) -> dict[str, Any] | None`: queries benchmark row + all run rows and returns a `{"type": "snapshot", "benchmark": {...}, "runs": [...]}` dict; returns `None` if benchmark not found.
+- `POST /benchmarks/{id}/stream-ticket` (API-key protected): issues a 30-second single-use WS ticket; called server-side by the Next.js BFF so the API key never reaches the browser.
+- `WS /benchmarks/{id}/stream?ticket=…`: verifies and burns the ticket, sends a full snapshot, streams Redis deltas; pings every 20 s; on slow-client backpressure sends a fresh snapshot; closes cleanly on benchmark completion.
+- `_publish_run_status(redis_client, run, status, *, passed, cost_usd) -> None`: called after every `mark_run_terminal` in `runner.py`; publishes `{"type": "run_update", ...}` to the benchmark channel.
+- `POST /api/benchmarks/{id}/stream-ticket` (Next.js BFF): server-side ticket proxy; API key stays on the server.
+- `useRunStream({ benchmarkId, onMessage, onFallback, terminal })`: connects via ticket, reconnects with exponential backoff + jitter, falls back to polling after two failures, calls `onFallback()` to re-enable 3-second polling.
+- `BenchmarkMonitor` (updated): renders a live agents×tasks progress matrix, running cost tile, ETA tile, "● Live" indicator, and RAF-batched delta updates; falls back to 3-second `refetchInterval` polling when WS fails twice.
+- `apps/api/scripts/load_test_ws.py`: 200-concurrent-client WS load test; reports p50/p95 connect latency, error count, and optional RSS.
+- `make check` gates: Ruff (`All checks passed`), mypy (`Success` on new files), pytest (`159 passed, 16 skipped`).

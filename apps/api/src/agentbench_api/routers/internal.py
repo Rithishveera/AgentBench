@@ -118,4 +118,18 @@ async def complete_run(
             )
     await session.commit()
     await request.app.state.redis.lpush(f"run:{run_id}:done", str(run_id))
+    # Publish the status transition to the benchmark hub.
+    if body.status != "success":
+        from agentbench_api.ws.hub import publish as hub_publish
+        await hub_publish(
+            request.app.state.redis,
+            run.benchmark_id,
+            {
+                "type": "run_update",
+                "run_id": str(run_id),
+                "agent_id": str(run.agent_id),
+                "task_id": run.task_id,
+                "status": "agent_error",
+            },
+        )
     return Response(status_code=204)

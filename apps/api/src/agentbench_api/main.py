@@ -29,6 +29,7 @@ from agentbench_api.routers.internal import router as internal_router
 from agentbench_api.routers.results import router as results_router
 from agentbench_api.routers.runs import router as runs_router
 from agentbench_api.routers.suites import router as suites_router
+from agentbench_api.routers.ws import router as ws_router
 
 MAX_REQUEST_BYTES = 2 * 1024 * 1024
 logger = structlog.get_logger(__name__)
@@ -249,4 +250,5 @@ def create_app(
     app.include_router(results_router)
     app.include_router(runs_router)
     app.include_router(internal_router, prefix="/internal")
+    app.include_router(ws_router)
     return app

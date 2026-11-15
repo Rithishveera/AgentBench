@@ -20,6 +20,7 @@ async def finalize_benchmark(
     benchmark_id: UUID,
     *,
     session_factory: async_sessionmaker[AsyncSession] | None = None,
+    redis_client: Any | None = None,
 ) -> dict[str, Any]:
     """Store overall, per-agent, and task-level aggregates on a benchmark."""
     factory = session_factory or get_session_factory()
@@ -196,6 +197,16 @@ async def finalize_benchmark(
         else:
             benchmark.status = "queued"
         await session.commit()
+        if redis_client is not None and benchmark.status == "completed":
+            from agentbench_api.ws.hub import publish as hub_publish
+            await hub_publish(
+                redis_client,
+                benchmark_id,
+                {
+                    "type": "benchmark_complete",
+                    "benchmark_status": benchmark.status,
+                },
+            )
         return {
             "id": str(benchmark.id),
             "status": benchmark.status,

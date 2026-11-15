@@ -29,8 +29,37 @@ from agentbench_api.services.llm_gateway import managed_run_key
 from agentbench_api.services.metrics import record_run_usage
 from agentbench_api.services.sandbox import DockerSandbox
 from agentbench_api.services.validator import validate_run
+from agentbench_api.ws.hub import publish as hub_publish
 
 logger = structlog.get_logger(__name__)
+
+
+async def _publish_run_status(
+    redis_client: Any,
+    run: Run,
+    status: str,
+    *,
+    passed: bool | None = None,
+    cost_usd: float | None = None,
+) -> None:
+    """Fire-and-forget publish of a run status event to the benchmark channel."""
+    if redis_client is None:
+        return
+    try:
+        event: dict[str, Any] = {
+            "type": "run_update",
+            "run_id": str(run.id),
+            "agent_id": str(run.agent_id),
+            "task_id": run.task_id,
+            "status": status,
+        }
+        if passed is not None:
+            event["passed"] = passed
+        if cost_usd is not None:
+            event["cost_usd"] = cost_usd
+        await hub_publish(redis_client, run.benchmark_id, event)
+    except Exception:
+        logger.warning("run_status_publish_failed", run_id=str(run.id))
 
 
 async def execute_run(
@@ -53,6 +82,7 @@ async def execute_run(
             if claimed is None:
                 return False
             run = claimed
+            await _publish_run_status(redis_client, run, "running")
         if run.status not in {"queued", "running"}:
             return True
 
@@ -66,6 +96,7 @@ async def execute_run(
                 error="agent record was not found",
             )
             await session.commit()
+            await _publish_run_status(redis_client, run, "infra_error")
             return False
 
         task_record = await session.get(TaskRecord, run.task_id)
@@ -78,6 +109,7 @@ async def execute_run(
                 error=f"task {run.task_id} was not found",
             )
             await session.commit()
+            await _publish_run_status(redis_client, run, "infra_error")
             return False
 
         task = await _task_model(task_record)
@@ -123,6 +155,7 @@ async def execute_run(
                             error=str(exc),
                         )
                         await session.commit()
+                        await _publish_run_status(redis_client, run, "infra_error")
                         return False
                     finally:
                         await client.close()
@@ -162,12 +195,14 @@ async def execute_run(
                                 error="run did not complete before its timeout",
                             )
                             await session.commit()
+                            await _publish_run_status(redis_client, run, "timeout")
                             return True
 
                     refreshed = await session.get(Run, run.id)
                     if refreshed is None:
                         return False
                     if refreshed.status in {"agent_error", "timeout", "infra_error"}:
+                        await _publish_run_status(redis_client, run, refreshed.status)
                         return True
                     if refreshed.status != "running":
                         return True
@@ -180,6 +215,7 @@ async def execute_run(
                             error="run timed out before callback completion",
                         )
                         await session.commit()
+                        await _publish_run_status(redis_client, run, "timeout")
                         return True
 
                     patch = (refreshed.artifact or {}).get("patch")
@@ -202,6 +238,7 @@ async def execute_run(
                             error=str(exc),
                         )
                         await session.commit()
+                        await _publish_run_status(redis_client, run, "infra_error")
                         return False
 
                     if verdict is None:
@@ -213,6 +250,7 @@ async def execute_run(
                             error="validator returned no result",
                         )
                         await session.commit()
+                        await _publish_run_status(redis_client, run, "infra_error")
                         return False
 
                     await mark_run_terminal(
@@ -224,6 +262,13 @@ async def execute_run(
                         duration_ms=max(int(refreshed.duration_ms or 0), 0),
                     )
                     await session.commit()
+                    await _publish_run_status(
+                        redis_client,
+                        run,
+                        "completed",
+                        passed=verdict.passed,
+                        cost_usd=float(refreshed.cost_usd or 0),
+                    )
                     return True
                 finally:
                     try:
@@ -250,6 +295,7 @@ async def execute_run(
                     error=f"gateway or run execution failed: {type(exc).__name__}",
                 )
                 await session.commit()
+                await _publish_run_status(redis_client, run, "infra_error")
                 return False
             logger.error(
                 "run_key_revocation_failed",

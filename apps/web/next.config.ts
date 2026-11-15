@@ -18,11 +18,22 @@ const securityHeaders = [
   },
 ];
 
+const apiBase = (process.env.AGENTBENCH_API_URL ?? "http://api:8000").replace(/\/$/, "");
+
 const config: NextConfig = {
   output: process.env.AGENTBENCH_STANDALONE === "1" ? "standalone" : undefined,
   outputFileTracingRoot: path.join(__dirname, "../.."),
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async rewrites() {
+    return [
+      // Proxy the WebSocket stream to the Python API — ticket handles auth.
+      {
+        source: "/api/benchmarks/:benchmarkId/ws",
+        destination: `${apiBase}/benchmarks/:benchmarkId/stream`,
+      },
+    ];
   },
 };
 
