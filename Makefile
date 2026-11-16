@@ -1,4 +1,4 @@
-.PHONY: up down check test fmt sandbox-image qa-tasks migrate check-agent-network gen-types
+﻿.PHONY: up down check test fmt sandbox-image qa-tasks migrate check-agent-network gen-types
 
 up:
 	docker compose up -d --wait
@@ -11,7 +11,8 @@ check:
 	uv run --all-packages ruff format --check .
 	uv run --all-packages mypy --strict
 	uv run --all-packages pytest
-	corepack pnpm --filter @agentbench/web typecheck
+
+	corepack pnpm --filter @agentbench/web check-tokens
 	corepack pnpm --filter @agentbench/web test
 	corepack pnpm --filter @agentbench/web build
 	API_KEY="$${API_KEY:-agentbench-test-key}" corepack pnpm --filter @agentbench/web test:security

@@ -5,7 +5,12 @@ import type { FaultRecord, RunRecord, StepSummary } from "@/lib/api-server";
 
 type Slice = { start: number; end: number; kind: "llm" | "tool" | "wait"; seq: number };
 
-const colors = { llm: "#17664f", tool: "#e45c3a", wait: "#9aa8b2" };
+// Token CSS variable references — no hex literals
+const sliceColors = {
+  llm:  "var(--color-teal-glow)",
+  tool: "var(--color-tan)",
+  wait: "var(--color-ink-raised)",
+};
 
 function timelineSlices(steps: StepSummary[], run: RunRecord, complete: boolean) {
   const runStart = run.started_at ? Date.parse(run.started_at) : NaN;
@@ -119,7 +124,7 @@ export function TimeRuler({
               width={width}
               height={16}
               rx={2}
-              fill={colors[slice.kind]}
+              fill={sliceColors[slice.kind]}
             />
           );
         })}
@@ -130,7 +135,7 @@ export function TimeRuler({
             : 0;
           return (
             <g key={`fault-${fault.seq}`} aria-label={`${fault.fault_type}, ${fault.agent_reaction ?? "unclassified"}`}>
-              <line x1={position} x2={position} y1={0} y2={18} stroke="#9b3d2c" strokeWidth={2} />
+              <line x1={position} x2={position} y1={0} y2={18} stroke="var(--color-red)" strokeWidth={2} />
               <title>{fault.fault_type}: {fault.agent_reaction ?? "unclassified"}</title>
             </g>
           );

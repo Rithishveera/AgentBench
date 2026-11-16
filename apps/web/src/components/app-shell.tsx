@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Activity, Bot, ChartNoAxesCombined, CirclePlus, ShieldCheck } from "lucide-react";
+import { Bot, ChartNoAxesCombined, CirclePlus, ShieldCheck } from "lucide-react";
+import { Wordmark } from "@/components/ui/wordmark";
 
 const links = [
   { href: "/", label: "Leaderboard", icon: ChartNoAxesCombined },
@@ -14,13 +15,9 @@ export function AppShell({
   return (
     <div className="app-frame">
       <aside className="sidebar">
-        <Link className="brand" href="/">
-          <span className="brand-mark"><Activity size={19} aria-hidden="true" /></span>
-          <span className="brand-copy">
-            <span className="brand-name">AgentBench</span>
-            <span className="brand-caption">Evaluation workspace</span>
-          </span>
-        </Link>
+        <div className="brand">
+          <Wordmark size="sm" href="/" />
+        </div>
         <p className="nav-label">Workspace</p>
         <nav className="nav-list" aria-label="Main navigation">
           {links.map(({ href, label, icon: Icon }) => (

@@ -1,13 +1,9 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { StampBadge } from "@/components/ui/stamp-badge";
+import { VinylSpinner } from "@/components/ui/vinyl-spinner";
 import type { CursorPage, FaultRecord, RunRecord } from "@/lib/api-server";
-
-function statusTone(run: RunRecord) {
-  if (run.verdict?.passed) return "success" as const;
-  if (["agent_error", "timeout", "infra_error"].includes(run.status)) return "danger" as const;
-  if (run.status === "running") return "info" as const;
-  return "neutral" as const;
-}
+import { getStatusEntry } from "@/lib/status";
 
 export function RunHeader({
   run,
@@ -24,16 +20,31 @@ export function RunHeader({
   }, {});
   const faultTotal = Object.values(counts).reduce((sum, value) => sum + value, 0);
   const faultCount = `${faultTotal.toLocaleString()}${initialFaults?.next_cursor !== null && initialFaults?.next_cursor !== undefined ? "+" : ""}`;
+
+  const statusEntry = getStatusEntry(run.verdict ? (run.verdict.passed ? "passed" : "failed") : run.status);
+  const isRunning = run.status === "running";
+
   return (
     <>
       <div className="page-heading run-heading">
         <div>
-          <Link className="mb-3 inline-flex text-xs font-semibold text-slate-500 hover:text-forest" href={`/benchmarks/${run.benchmark_id}`}>Back to benchmark</Link>
+          <Link className="mb-3 inline-flex text-xs font-semibold text-tan hover:text-paper" href={`/benchmarks/${run.benchmark_id}`}>Back to benchmark</Link>
           <p className="eyebrow">Run inspector</p>
           <h1>{agentName}</h1>
           <p className="page-subtitle"><span className="mono">{run.task_id}</span> · Attempt {run.attempt_no} · <span className="mono">{run.id}</span></p>
         </div>
-        <Badge tone={statusTone(run)}>{run.verdict ? run.verdict.passed ? "Passed" : "Failed" : run.status}</Badge>
+        <div className="flex items-center gap-3">
+          {isRunning ? (
+            <VinylSpinner size={28} />
+          ) : run.verdict ? (
+            <StampBadge verdict={run.verdict.passed ? "Passed" : "Failed"} />
+          ) : (
+            <Badge status={run.status}>
+              <statusEntry.icon size={13} aria-hidden="true" />
+              {statusEntry.label}
+            </Badge>
+          )}
+        </div>
       </div>
       <div className="run-metrics" aria-label="Run summary">
         <Metric label="Cost" value={`$${Number(run.cost_usd || 0).toFixed(3)}`} />

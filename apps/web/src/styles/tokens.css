@@ -1,0 +1,63 @@
+/* =================================================================
+   AgentBench Design System — Token File
+   Single source of truth for all colors, radii, shadows, type scale.
+
+   RULES (enforced by scripts/check-tokens.mjs):
+   - Never use --color-teal as text color or border < 2px on ink bg.
+   - All derived tints must use color-mix() with ink or paper only.
+   - No hex / rgb() / hsl() literals outside this file and fonts.ts.
+   ================================================================= */
+
+:root {
+  /* Palette */
+  --color-ink:        #1A1A1A;
+  --color-ink-raised: #1E2323;
+  --color-teal:       #3E6868;
+  --color-red:        #C94E44;
+  --color-tan:        #C1AB85;
+  --color-paper:      #EFE6D2;
+  --color-teal-glow:  #7FAAA5;
+  --color-red-glow:   #E0776D;
+
+  /* Derived tints — ink/paper mixes only, no new hue values */
+  --color-teal-subtle: color-mix(in srgb, var(--color-teal) 20%, var(--color-ink));
+  --color-red-subtle:  color-mix(in srgb, var(--color-red)  20%, var(--color-ink));
+  --color-tan-subtle:  color-mix(in srgb, var(--color-tan)  15%, var(--color-ink));
+
+  /* Geometry */
+  --radius-card: 28px;
+  --radius-pill: 9999px;
+
+  /* Shadows — hard offset, no blur */
+  --shadow-teal: 6px 6px 0 var(--color-teal);
+  --shadow-red:  6px 6px 0 var(--color-red);
+
+  /* Type scale — 7 steps, all distinct pixel values */
+  --text-xs:      11px;
+  --text-sm:      13px;
+  --text-base:    15px;
+  --text-md:      17px;
+  --text-lg:      20px;
+  --text-xl:      26px;
+  --text-display: 40px;
+
+  /* shadcn/ui CSS variable aliases */
+  --background:             var(--color-ink);
+  --foreground:             var(--color-paper);
+  --card:                   var(--color-ink-raised);
+  --card-foreground:        var(--color-paper);
+  --primary:                var(--color-red);
+  --primary-foreground:     var(--color-paper);
+  --secondary:              var(--color-teal);
+  --secondary-foreground:   var(--color-paper);
+  --muted:                  var(--color-ink-raised);
+  --muted-foreground:       var(--color-tan);
+  --accent:                 var(--color-teal);
+  --accent-foreground:      var(--color-paper);
+  --destructive:            var(--color-red);
+  --destructive-foreground: var(--color-paper);
+  --border:                 var(--color-tan);
+  --input:                  var(--color-ink-raised);
+  --ring:                   var(--color-tan);
+  --radius:                 var(--radius-card);
+}

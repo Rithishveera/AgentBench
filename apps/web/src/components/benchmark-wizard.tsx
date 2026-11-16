@@ -122,16 +122,16 @@ export function BenchmarkWizard({
             <div className="surface-header"><div><h2 className="section-title" id="scope-title">1. Evaluation scope</h2><p className="section-note">Visible fixtures only are sent to agents.</p></div></div>
             <div className="surface-body grid gap-5">
               <label className="control-label">Task suite
-                <select className="control h-10 rounded-md border border-line bg-white px-3 text-sm" value={suiteId} onChange={(event) => setSuiteId(event.target.value)} required>
+                <select className="control h-10 rounded-md border border-tan bg-ink-raised px-3 text-sm text-paper" value={suiteId} onChange={(event) => setSuiteId(event.target.value)} required>
                   <option value="">Select a suite</option>
                   {availableSuites.map((suite) => <option key={suite.id} value={suite.id}>{suite.title} · {suite.task_count} tasks</option>)}
                 </select>
               </label>
               {tasksQuery.isError && <p className="error-text" role="alert">Could not load task limits for this suite.</p>}
               <fieldset className="grid gap-3 border-0 p-0">
-                <legend className="control-label mb-1">Agents <span className="font-normal text-slate-500">Select one or more</span></legend>
-                {availableAgents.length === 0 ? <p className="text-xs text-slate-500">Register an agent before creating a benchmark.</p> : availableAgents.map((agent) => (
-                  <label className="checkbox-row rounded-md border border-line p-3" key={agent.id}>
+                <legend className="control-label mb-1">Agents <span className="font-normal text-tan">Select one or more</span></legend>
+                {availableAgents.length === 0 ? <p className="text-xs text-tan">Register an agent before creating a benchmark.</p> : availableAgents.map((agent) => (
+                  <label className="checkbox-row rounded-md border border-tan p-3" key={agent.id}>
                     <input type="checkbox" checked={agentIds.includes(agent.id)} onChange={() => toggleAgent(agent.id)} />
                     <span className="checkbox-copy"><strong>{agent.name}</strong><span>{agent.category} · {agent.framework_tag || "No framework tag"}</span></span>
                   </label>
@@ -145,13 +145,13 @@ export function BenchmarkWizard({
             <div className="surface-header"><div><h2 className="section-title" id="fault-title">2. Resilience conditions</h2><p className="section-note">Faults are deterministic for each benchmark run.</p></div></div>
             <div className="surface-body grid gap-3">
               {faultOptions.map((fault) => (
-                <label className="checkbox-row rounded-md border border-line p-3" key={fault.key}>
+                <label className="checkbox-row rounded-md border border-tan p-3" key={fault.key}>
                   <input type="checkbox" checked={faults[fault.key]} onChange={(event) => setFaults((current) => ({ ...current, [fault.key]: event.target.checked }))} />
                   <span className="checkbox-copy"><strong>{fault.label}</strong><span>{fault.detail}</span></span>
                 </label>
               ))}
               {faults.latency_spike && <label className="control-label max-w-48">Added latency (seconds)<Input type="number" min={0.1} max={60} step={0.1} value={latencySeconds} onChange={(event) => setLatencySeconds(Number(event.target.value))} /></label>}
-              <label className="checkbox-row border-t border-line pt-4">
+              <label className="checkbox-row border-t border-tan pt-4">
                 <input type="checkbox" checked={paired} disabled={!hasFault} onChange={(event) => setPaired(event.target.checked)} />
                 <span className="checkbox-copy"><strong>Paired baseline and faulted runs</strong><span>{hasFault ? "Runs each selection once without faults and once with the selected faults." : "Select an injected fault to enable paired runs."}</span></span>
               </label>
@@ -160,14 +160,14 @@ export function BenchmarkWizard({
         </div>
 
         <aside className="surface xl:sticky xl:top-5" aria-labelledby="estimate-title">
-          <div className="surface-header"><div><h2 className="section-title" id="estimate-title">Worst-case budget</h2><p className="section-note">Based on every task's configured max cost.</p></div></div>
+          <div className="surface-header"><div><h2 className="section-title" id="estimate-title">Worst-case budget</h2><p className="section-note">Based on every task configured max cost.</p></div></div>
           <div className="surface-body grid gap-4">
             <div className="summary-tile"><span>Estimated ceiling</span><strong>${estimatedCost.toFixed(2)}</strong></div>
-            <dl className="grid gap-2 text-xs text-slate-600">
-              <div className="flex justify-between gap-3"><dt>Tasks</dt><dd className="m-0 font-semibold text-ink">{tasks.length || "—"}</dd></div>
-              <div className="flex justify-between gap-3"><dt>Agents</dt><dd className="m-0 font-semibold text-ink">{selectedAgents.length}</dd></div>
-              <div className="flex justify-between gap-3"><dt>Repetitions</dt><dd className="m-0 font-semibold text-ink">{repetitions}</dd></div>
-              <div className="flex justify-between gap-3"><dt>Run variants</dt><dd className="m-0 font-semibold text-ink">{paired ? "Baseline + faulted" : "Single"}</dd></div>
+            <dl className="grid gap-2 text-xs text-tan">
+              <div className="flex justify-between gap-3"><dt>Tasks</dt><dd className="m-0 font-semibold text-paper">{tasks.length || "—"}</dd></div>
+              <div className="flex justify-between gap-3"><dt>Agents</dt><dd className="m-0 font-semibold text-paper">{selectedAgents.length}</dd></div>
+              <div className="flex justify-between gap-3"><dt>Repetitions</dt><dd className="m-0 font-semibold text-paper">{repetitions}</dd></div>
+              <div className="flex justify-between gap-3"><dt>Run variants</dt><dd className="m-0 font-semibold text-paper">{paired ? "Baseline + faulted" : "Single"}</dd></div>
             </dl>
             <p className="notice"><AlertTriangle size={14} className="mr-1 inline" aria-hidden="true" />Estimate assumes every run spends its full task budget; actual usage is usually lower.</p>
             {(validationError || create.error) && <p className="error-text" role="alert">{validationError || create.error?.message}</p>}

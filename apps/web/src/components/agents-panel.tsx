@@ -8,13 +8,14 @@ import { registerAgentSchema } from "@/lib/validation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getStatusEntry } from "@/lib/status";
 
-function health(agent: Agent) {
-  if (!agent.last_health_check_at) return { text: "Unverified", tone: "neutral" as const };
+function health(agent: Agent): { text: string; tone: "neutral" | "success" | "warning" | "danger" | "info" } {
+  if (!agent.last_health_check_at) return { text: "Unverified", tone: "neutral" };
   const age = Date.now() - new Date(agent.last_health_check_at).getTime();
   return age < 5 * 60_000
-    ? { text: "Healthy · checked", tone: "success" as const }
-    : { text: "Check stale", tone: "warning" as const };
+    ? { text: "Healthy · checked", tone: "success" }
+    : { text: "Check stale", tone: "warning" };
 }
 
 export function AgentsPanel({
@@ -100,7 +101,7 @@ export function AgentsPanel({
             <Button variant="quiet" size="small" onClick={() => setSecret("")}>Dismiss</Button>
           </div>
           <div className="surface-body grid gap-3">
-            <div className="notice"><strong>Copy this secret now.</strong>It is shown only once and cannot be retrieved later.</div>
+            <div className="notice"><strong>Copy this secret now.</strong> It is shown only once and cannot be retrieved later.</div>
             <div className="toolbar">
               <code className="secret-box flex-1">{secret}</code>
               <Button variant="outline" onClick={copySecret} aria-label="Copy registration secret">
@@ -157,12 +158,15 @@ export function AgentsPanel({
         </section>
 
         <section className="surface" aria-labelledby="register-title">
-          <div className="surface-header"><div><h2 className="section-title" id="register-title">Register an agent</h2><p className="section-note">The API checks /health before saving.</p></div><Plus size={17} className="text-forest" aria-hidden="true" /></div>
+          <div className="surface-header">
+            <div><h2 className="section-title" id="register-title">Register an agent</h2><p className="section-note">The API checks /health before saving.</p></div>
+            <Plus size={17} className="text-teal-glow" aria-hidden="true" />
+          </div>
           <form className="surface-body grid gap-4" onSubmit={submit}>
             <label className="control-label">Display name<Input name="name" required maxLength={200} placeholder="e.g. PatchPilot" /></label>
             <label className="control-label">Agent base URL<Input name="url" type="url" required placeholder="https://agent.example.com" /></label>
             <label className="control-label">Category
-              <select className="control h-10 rounded-md border border-line bg-white px-3 text-sm" name="category" required defaultValue="coding">
+              <select className="control h-10 rounded-md border border-tan bg-ink-raised px-3 text-sm text-paper" name="category" required defaultValue="coding">
                 <option value="coding">Coding</option><option value="research">Research</option><option value="support">Support</option>
               </select>
             </label>

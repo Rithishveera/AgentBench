@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --dir src",
     "test:security": "node --test tests/client-bundle.test.mjs",
-    "gen-types": "node scripts/gen-types.mjs"
+    "gen-types": "node scripts/gen-types.mjs",
+    "check-tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.66.0",

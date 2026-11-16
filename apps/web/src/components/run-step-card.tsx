@@ -7,6 +7,12 @@ import { StepPayloadDetail } from "@/components/step-payload-detail";
 import type { StepSummary } from "@/lib/api-server";
 import { formatUtcTime } from "@/lib/utils";
 
+const stepTypeTone = {
+  llm:   "info",
+  tool:  "neutral",
+  retry: "warning",
+} as const;
+
 export function RunStepCard({
   runId,
   step,
@@ -19,6 +25,7 @@ export function RunStepCard({
   onArrow: (seq: number, direction: -1 | 1) => void;
 }>) {
   const [expanded, setExpanded] = useState(false);
+  const tone = stepTypeTone[step.type as keyof typeof stepTypeTone] ?? "neutral";
   return (
     <article className={`timeline-card ${step.ok ? "" : "timeline-card-failed"}`}>
       <div className="timeline-pin" aria-hidden="true"><span /></div>
@@ -39,7 +46,7 @@ export function RunStepCard({
         <span className="timeline-step-main">
           <span className="timeline-step-title">
             <span className="metric-main">{step.short_label}</span>
-            <Badge tone={step.type === "llm" ? "info" : step.type === "tool" ? "neutral" : "warning"}>{step.type}</Badge>
+            <Badge tone={tone}>{step.type}</Badge>
             {!step.ok && <Badge tone="danger"><CircleAlert size={12} />Failed</Badge>}
             {step.truncated && <Badge tone="warning">Truncated</Badge>}
           </span>

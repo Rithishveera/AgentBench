@@ -1,4 +1,5 @@
 import type { RunVerdict } from "@/lib/api-server";
+import { StampBadge } from "@/components/ui/stamp-badge";
 
 function artifactText(artifact: Record<string, unknown> | null) {
   const patch = artifact?.patch;
@@ -31,6 +32,9 @@ export function RunVerdictPanel({
             {verdict ? `${verdict.error_kind} · score ${(verdict.score * 100).toFixed(0)}%` : error || "No verdict was recorded."}
           </p>
         </div>
+        {verdict && (
+          <StampBadge verdict={verdict.passed ? "Passed" : "Failed"} />
+        )}
       </div>
       <div className="surface-body grid gap-4">
         {reason && <p className="verdict-reason">{reason}</p>}
@@ -46,8 +50,9 @@ export function RunVerdictPanel({
           <details className="patch-details">
             <summary>Submitted patch</summary>
             <pre className="patch-pre"><code>{patch.split("\n").map((line, index) => {
-              const tone = line.startsWith("+") ? "diff-add" : line.startsWith("-") ? "diff-remove" : line.startsWith("@@") ? "diff-hunk" : "";
-              return <span className={tone} key={index}>{line || " "}{"\n"}</span>;
+              const cls = line.startsWith("+") ? "diff-add" : line.startsWith("-") ? "diff-remove" : line.startsWith("@@") ? "diff-hunk" : "";
+              // gutter symbol conveyed by the line content itself (+/- prefix) — color is not the sole signal
+              return <span className={cls} key={index}>{line || " "}{"\n"}</span>;
             })}</code></pre>
           </details>
         )}
